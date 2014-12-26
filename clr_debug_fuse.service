@@ -1,0 +1,10 @@
+[Unit]
+Description=Clear Linux debuginfo fuse monitor
+After=clr_debug_daemon.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/clr_debug_fuse
+
+[Install]
+WantedBy=multi-user.target
