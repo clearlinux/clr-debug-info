@@ -161,10 +161,11 @@ out:
 static void recurse_dir(char *base1, char *base2, char *path)
 {
 	DIR *dir;
-	char *fullpath1, *newpath;
+	char *fullpath1, *fullpath2, *newpath;
 	struct dirent *entry;
 
 	fullpath1 = NULL;
+	fullpath2 = NULL;
 
 
 	if (asprintf(&fullpath1, "%s%s", base1, path) < 0)
@@ -184,20 +185,21 @@ static void recurse_dir(char *base1, char *base2, char *path)
 			continue;
 		if (strcmp(entry->d_name, "..") == 0)
 			continue;
-
-		if (entry->d_type == DT_DIR) {
-			newpath = NULL;
-			if (asprintf(&newpath, "%s/%s", path, entry->d_name) >= 0) {
+			
+		newpath = NULL;
+		fullpath2 = NULL;
+		asprintf(&fullpath2, "%s/%s", fullpath1, entry->d_name);
+		if (asprintf(&newpath, "%s/%s", path, entry->d_name) >= 0) {
+			struct stat sb;
+			stat(fullpath2, &sb);
+			
+			if (entry->d_type == DT_DIR || S_ISDIR(sb.st_mode)) {
 				do_one_file(base1, base2, newpath, 1);
 				recurse_dir(base1, base2, newpath);
-				free(newpath);
-			}		
-		} else {
-			newpath = NULL;
-			if (asprintf(&newpath, "%s/%s", path, entry->d_name) >= 0) {
+			} else {
 				do_one_file(base1, base2, newpath, 0);
-				free(newpath);
 			}		
+			free(newpath);
 		}
 	}
 	closedir(dir);
