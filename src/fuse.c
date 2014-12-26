@@ -611,11 +611,14 @@ int main(int argc, char *argv[])
 	char *shadowdir = "/var/cache/debuginfo/src";
 	umask(0);
 
-	system("modprobe fuse");
+	if (access("/sys/module/fuse/", F_OK))
+		system("modprobe fuse");
 	signal(SIGPIPE,SIG_IGN);
 	
-	system("mkdir -p /var/cache/debuginfo/lib &> /dev/null");
-	system("mkdir -p /var/cache/debuginfo/src &> /dev/null");
+	if (access("/var/cache/debuginfo/lib/", F_OK))
+		system("mkdir -p /var/cache/debuginfo/lib &> /dev/null");
+	if (access("/var/cache/debuginfo/src/", F_OK))
+		system("mkdir -p /var/cache/debuginfo/src &> /dev/null");
 
 	if (fork() == 0) {
 		dir = "/usr/lib/debug";
