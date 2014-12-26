@@ -124,7 +124,7 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 
 		memset(&statbuf, 0, sizeof(statbuf));
 		stat(filename, &statbuf);
-		if (statbuf.st_size > 0 && asprintf(&command, "tar -C /usr/%s/.debug --no-same-owner  -xf %s", prefix, filename) >= 0) {
+		if (statbuf.st_size > 0 && asprintf(&command, "tar -C /var/cache/debuginfo/%s --no-same-owner  -xf %s", prefix, filename) >= 0) {
 			system(command);
 			free(command);
 		} 
