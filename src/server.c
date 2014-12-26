@@ -229,9 +229,11 @@ int main(int argc, char **argv)
 	curl_global_init(CURL_GLOBAL_ALL);
 
 	signal(SIGPIPE,SIG_IGN);
-	
-	system("mkdir -p /var/cache/debuginfo/lib/ &> /dev/null");
-	system("mkdir -p /var/cache/debuginfo/src/ &> /dev/null");
+
+	if (access("/var/cache/debuginfo/lib/", F_OK))	
+		system("mkdir -p /var/cache/debuginfo/lib/ &> /dev/null");
+	if (access("/var/cache/debuginfo/src/", F_OK))	
+		system("mkdir -p /var/cache/debuginfo/src/ &> /dev/null");
 
   
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
