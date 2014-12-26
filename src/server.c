@@ -230,8 +230,8 @@ int main(int argc, char **argv)
 
 	signal(SIGPIPE,SIG_IGN);
 	
-	system("mkdir -p /usr/lib/.debug &> /dev/null");
-	system("mkdir -p /usr/src/.debug &> /dev/null");
+	system("mkdir -p /var/cache/debuginfo/lib/ &> /dev/null");
+	system("mkdir -p /var/cache/debuginfo/src/ &> /dev/null");
 
   
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);

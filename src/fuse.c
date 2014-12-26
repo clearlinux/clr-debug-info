@@ -608,18 +608,18 @@ int main(int argc, char *argv[])
 {
 	char * fake_argv[20];
 	char *dir = "/usr/src/debug";
-	char *shadowdir = "/usr/src/.debug";
+	char *shadowdir = "/var/cache/debuginfo/src";
 	umask(0);
 
 	system("modprobe fuse");
 	signal(SIGPIPE,SIG_IGN);
 	
-	system("mkdir -p /usr/lib/.debug &> /dev/null");
-	system("mkdir -p /usr/src/.debug &> /dev/null");
+	system("mkdir -p /var/cache/debuginfo/lib &> /dev/null");
+	system("mkdir -p /var/cache/debuginfo/src &> /dev/null");
 
 	if (fork() == 0) {
 		dir = "/usr/lib/debug";
-		shadowdir = "/usr/lib/.debug";
+		shadowdir = "/var/cache/debuginfo/lib";
 		prefix = "lib";
 
 	}
