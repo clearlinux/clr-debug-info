@@ -14,9 +14,6 @@ clr_debug_fuse_LDADD = ${fuse_LIBS} $(glib_LIBS)
 clr_debug_daemon_LDADD = $(glib_LIBS) ${curl_LIBS}
 clr_debug_prepare_LDADD = $(glib_LIBS)
 
+systemdsystemunit_DATA = clr_debug_fuse.service clr_debug_daemon.service
 
-systemdunitdir = @SYSTEMD_UNITDIR@
-systemdunit_DATA = clr_debug_fuse.service clr_debug_daemon.service
-
-tmpwatchdir = /etc/tmpfiles.d
-tmpwatch_DATA = debuginfo.conf
+tmpfiles_DATA = debuginfo.conf
