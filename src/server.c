@@ -196,7 +196,7 @@ static void *server_thread(void *arg)
 		return NULL; 
 	}
 	url = NULL;
-	if (asprintf(&url, "http://localhost/debuginfo/%s%s.tar", prefix, path) < 0) {
+	if (asprintf(&url, "http://debuginfo.clearlinux.org/debuginfo/%s%s.tar", prefix, path) < 0) {
 		close(fd);
 		return NULL;
 	}
