@@ -610,6 +610,9 @@ int main(int argc, char *argv[])
 	char *dir = "/usr/src/debug";
 	char *shadowdir = "/var/cache/debuginfo/src";
 	umask(0);
+	
+	/* give the system some time to boot before we go active; this is a background task */
+	sleep(1);
 
 	if (access("/sys/module/fuse/", F_OK))
 		system("modprobe fuse");
