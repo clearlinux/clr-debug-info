@@ -186,7 +186,7 @@ static void *server_thread(void *arg)
 	path++;
 
 
-	if (strstr(path, "..") || strstr(prefix, "..")) {
+	if (strstr(path, "..") || strstr(prefix, "..") || strstr(path, "'") || strstr(path, ";")) {
 		close(fd);
 		return NULL;
 	}
