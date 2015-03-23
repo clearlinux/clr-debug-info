@@ -205,17 +205,19 @@ static void *server_thread(void *arg)
 //	printf("Getting url %s    %i:%06i\n", url, before.tv_sec, before.tv_usec);
 	ret = curl_get_file(url, prefix, timestamp);
 
-	/* tell the other side we're done with the download */
-	write(fd, "ok", 3);
-	close(fd);
+	if (ret != 200)
+		printf("Request for %s resulted in error %i\n", url, ret);
 
 	gettimeofday(&after, NULL);
 	if (timedelta(before, after) > 0.6) 
 		printf("Request for %s took %5.2f seconds (%i - %i)\n", url,
 			after.tv_sec - before.tv_sec + (1.0*after.tv_usec - before.tv_usec) / 1000000.0, ret, (int)timestamp);
+
+	/* tell the other side we're done with the download */
+	write(fd, "ok", 3);
+	close(fd);
+
 			
-	if (ret != 200)
-		printf("Request for %s resulted in error %i\n", url, ret);
 	free(url);
 	return NULL;
 }
