@@ -36,6 +36,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <sys/stat.h>
+#include <malloc.h>
 
 #include <curl/curl.h>
 #include <glib.h>
@@ -222,11 +223,11 @@ int main(int argc, char **argv)
 	int sockfd;
 	struct sockaddr_un sun;
 	int ret;
+	int curl_done = 0;
 
 	if (argc < -1)
 		(void)argv;
 
-	curl_global_init(CURL_GLOBAL_ALL);
 
 	signal(SIGPIPE,SIG_IGN);
 
@@ -235,7 +236,6 @@ int main(int argc, char **argv)
 	if (access("/var/cache/debuginfo/src/", F_OK))	
 		system("mkdir -p /var/cache/debuginfo/src/ &> /dev/null");
 
-  
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockfd < 0)
 		return EXIT_FAILURE;
@@ -260,7 +260,13 @@ int main(int argc, char **argv)
 		int clientsock;
 		pthread_t thread;
 
+		malloc_trim(0);
 		clientsock = accept(sockfd, NULL, NULL);
+
+		if (!curl_done) {
+			curl_global_init(CURL_GLOBAL_ALL);
+			curl_done = 1;
+		}
 
 		pthread_create(&thread, NULL, server_thread, (void *)(unsigned long)clientsock);
 		pthread_detach(thread);
