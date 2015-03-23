@@ -213,6 +213,9 @@ static void *server_thread(void *arg)
 	if (timedelta(before, after) > 0.6) 
 		printf("Request for %s took %5.2f seconds (%i - %i)\n", url,
 			after.tv_sec - before.tv_sec + (1.0*after.tv_usec - before.tv_usec) / 1000000.0, ret, (int)timestamp);
+			
+	if (ret != 200)
+		printf("Request for %s resulted in error %i\n", url, ret);
 	free(url);
 	return NULL;
 }
