@@ -43,6 +43,9 @@
 
 GStaticMutex dupes_mutex = G_STATIC_MUTEX_INIT;
 
+char *urls[2] = {"http://debuginfo.clearlinux.org/debuginfo/", "http://debuginfo.fenrus.org/debuginfo/" };
+int urlcounter = 0;
+
 
 static GHashTable *hash;
 
@@ -118,6 +121,9 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &ret);
 	fflush(file);
 //	printf("HTTP return code is %i\n", ret);
+
+	if (ret != 200 && ret != 404)
+		urlcounter++;
 
 	if (ret == 200) {
 		char *command = NULL;
@@ -197,7 +203,7 @@ static void *server_thread(void *arg)
 		return NULL; 
 	}
 	url = NULL;
-	if (asprintf(&url, "http://debuginfo.clearlinux.org/debuginfo/%s%s.tar", prefix, path) < 0) {
+	if (asprintf(&url, "%s%s%s.tar", urls[urlcounter % 2], prefix, path) < 0) {
 		close(fd);
 		return NULL;
 	}
