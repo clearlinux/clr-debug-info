@@ -44,7 +44,7 @@
 GStaticMutex dupes_mutex = G_STATIC_MUTEX_INIT;
 
 char *urls[2] = {"http://debuginfo.clearlinux.org/debuginfo/", "http://debuginfo.fenrus.org/debuginfo/" };
-int urlcounter = 0;
+int urlcounter = 1;
 
 
 static GHashTable *hash;
