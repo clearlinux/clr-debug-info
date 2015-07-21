@@ -43,7 +43,7 @@
 
 GStaticMutex dupes_mutex = G_STATIC_MUTEX_INIT;
 
-char *urls[2] = {"http://debuginfo.clearlinux.org/debuginfo/", "http://debuginfo.fenrus.org/debuginfo/" };
+char *urls[2] = {"https://debuginfo.clearlinux.org/debuginfo/", "http://debuginfo.fenrus.org/debuginfo/" };
 int urlcounter = 1;
 
 
