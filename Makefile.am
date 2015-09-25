@@ -1,5 +1,9 @@
 EXTRA_DIST = COPYING clr_debug_fuse.service clr_debug_daemon.service debuginfo.conf
 
+DISTCHECK_CONFIGURE_FLAGS = \
+	--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir) \
+	--with-systemdtmpfilesdir=$$dc_install_base/$(tmpfilesdir)
+
 bin_PROGRAMS = clr_debug_fuse clr_debug_daemon clr_debug_prepare
 
 clr_debug_fuse_SOURCES = src/fuse.c src/client.c

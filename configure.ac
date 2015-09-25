@@ -13,11 +13,19 @@ PKG_CHECK_MODULES([curl], [libcurl])
 PKG_CHECK_MODULES([fuse], [fuse])
 PKG_CHECK_MODULES([SYSTEMD], [systemd])
 
-tmpfilesdir=`pkg-config --variable tmpfilesdir systemd`
-AC_SUBST(tmpfilesdir)
+dir=""
+AC_ARG_WITH([systemdsystemunitdir], AS_HELP_STRING([--with-systemdsystemunitdir=DIR],
+	    [path to systemd system service dir @<:@default=/usr/lib/systemd/system@:>@]), [dir=${withval}],
+	    [dir="$($PKG_CONFIG --variable=systemdsystemunitdir systemd)"])
+test -z "${dir}" && dir=/usr/lib/systemd/system
+AC_SUBST(systemdsystemunitdir, [${dir}])
 
-systemdsystemunitdir=`pkg-config --variable systemdsystemunitdir systemd`
-AC_SUBST(systemdsystemunitdir)
+dir=""
+AC_ARG_WITH([systemdtmpfilesdir], AS_HELP_STRING([--with-systemdtmpfilesdir=DIR],
+	    [path to systemd tmpfiles dir @<:@default=/usr/lib/tmpfiles.d@:>@]), [dir=${withval}],
+	    [dir="$($PKG_CONFIG --variable=tmpfilesdir systemd)"])
+test -z "${dir}" && dir=/usr/lib/tmpfiles.d
+AC_SUBST(tmpfilesdir, [${dir}])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
