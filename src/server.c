@@ -41,7 +41,7 @@
 #include <curl/curl.h>
 #include <glib.h>
 
-GStaticMutex dupes_mutex = G_STATIC_MUTEX_INIT;
+static GMutex dupes_mutex;
 
 char *urls[2] = {"https://debuginfo.clearlinux.org/debuginfo/", "http://debuginfo.fenrus.org/debuginfo/" };
 int urlcounter = 1;
@@ -53,7 +53,7 @@ static int avoid_dupes(const char *url)
 {
 	int retval = 0;
 	void *value;
-	g_static_mutex_lock(&dupes_mutex);
+	g_mutex_lock(&dupes_mutex);
 
 	if (hash == NULL)
 		hash = g_hash_table_new(g_str_hash, g_str_equal);
@@ -71,7 +71,7 @@ static int avoid_dupes(const char *url)
 		g_hash_table_replace(hash, strdup(url), data);
 	}
 
-	g_static_mutex_unlock(&dupes_mutex);
+	g_mutex_unlock(&dupes_mutex);
 	return retval;
 }
 
