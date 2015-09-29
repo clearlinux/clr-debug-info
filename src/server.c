@@ -191,6 +191,14 @@ static void *server_thread(void *arg)
 	*path = 0;
 	path++;
 
+	/* GDB and elfutils both stat /usr/lib/debug directly when looking up
+	 * debuginfo, so avoid the download for "/.tar"; the associated cache
+	 * directories already exist by this point.
+	 */
+	if (strlen(path) == 1 && strcmp(path, "/") == 0) {
+		close(fd);
+		return NULL;
+	}
 
 	if (strstr(path, "..") || strstr(prefix, "..") || strstr(path, "'") || strstr(path, ";")) {
 		close(fd);
