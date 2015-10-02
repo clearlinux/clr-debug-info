@@ -122,7 +122,13 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 	fflush(file);
 //	printf("HTTP return code is %i\n", ret);
 
-	if (ret != 200 && ret != 404)
+	/* HTTP 304 is returned if (a) the cached debuginfo has the same
+	 * timestamp or is newer than that on the server and (b) we haven't
+	 * already added the URL to the hash table. So, the first crash for a
+	 * boot may result in a 304 if the debuginfo had been downloaded in a
+	 * previous boot.
+	 */
+	if (ret != 200 && ret != 404 && ret != 304)
 		urlcounter++;
 
 	if (ret == 200) {
