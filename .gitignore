@@ -20,3 +20,5 @@ install-sh
 missing
 stamp-h1
 *.tar.gz
+tags
+cscope.*
