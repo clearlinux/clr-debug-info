@@ -225,8 +225,17 @@ static void *server_thread(void *arg)
 //	printf("Getting url %s    %i:%06i\n", url, before.tv_sec, before.tv_usec);
 	ret = curl_get_file(url, prefix, timestamp);
 
-	if (ret != 200)
-		printf("Request for %s resulted in error %i\n", url, ret);
+	switch (ret) {
+		case 200:
+		case 300:
+		case 304:
+		case 404:
+			// ignore these error codes
+			break;
+		default:
+			printf("Request for %s resulted in error %i\n", url, ret);
+			break;
+	}
 
 	gettimeofday(&after, NULL);
 	if (timedelta(before, after) > 0.6) 
