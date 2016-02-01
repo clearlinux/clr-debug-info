@@ -43,7 +43,7 @@
 
 static GMutex dupes_mutex;
 
-char *urls[2] = {"https://debuginfo.clearlinux.org/debuginfo/", "http://debuginfo.fenrus.org/debuginfo/" };
+char *urls[2] = {"https://debuginfo.clearlinux.org/debuginfo/", "https://debuginfo.clearlinux.org/debuginfo/" };
 int urlcounter = 1;
 
 
