@@ -39,7 +39,9 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "nica/files.h"
 #include "nica/hashmap.h"
+
 #include <curl/curl.h>
 
 static pthread_mutex_t dupes_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -267,15 +269,18 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
         struct sockaddr_un sun;
         int ret;
         int curl_done = 0;
+        const char *required_paths[] = { "/var/cache/debuginfo/lib", "/var/cache/debuginfo/src" };
+
+        for (size_t i = 0; i < ARRAY_SIZE(required_paths); i++) {
+                if (nc_file_exists(required_paths[i])) {
+                        continue;
+                }
+                if (!nc_mkdir_p(required_paths[i], 00755)) {
+                        fprintf(stderr, "Failed to mkdir: %s", strerror(errno));
+                }
+        }
 
         signal(SIGPIPE, SIG_IGN);
-
-        if (access("/var/cache/debuginfo/lib/", F_OK)) {
-                system("mkdir -p /var/cache/debuginfo/lib/ &> /dev/null");
-        }
-        if (access("/var/cache/debuginfo/src/", F_OK)) {
-                system("mkdir -p /var/cache/debuginfo/src/ &> /dev/null");
-        }
 
         sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
         if (sockfd < 0) {

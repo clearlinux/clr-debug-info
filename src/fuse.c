@@ -47,6 +47,7 @@ Original copyright notice follows:
 #include <sys/xattr.h>
 #endif
 
+#include "nica/files.h"
 #include "nica/util.h"
 
 extern void try_to_get(const char *path, int pid, time_t timestamp);
@@ -654,6 +655,8 @@ int main(__nc_unused__ int argc, __nc_unused__ char *argv[])
         char *fake_argv[20];
         char *dir = "/usr/src/debug";
         char *shadowdir = "/var/cache/debuginfo/src";
+        const char *required_paths[] = { "/var/cache/debuginfo/lib", "/var/cache/debuginfo/src" };
+
         umask(0);
 
         /* give the system some time to boot before we go active; this is a background task */
@@ -664,11 +667,13 @@ int main(__nc_unused__ int argc, __nc_unused__ char *argv[])
         }
         signal(SIGPIPE, SIG_IGN);
 
-        if (access("/var/cache/debuginfo/lib/", F_OK)) {
-                system("mkdir -p /var/cache/debuginfo/lib &> /dev/null");
-        }
-        if (access("/var/cache/debuginfo/src/", F_OK)) {
-                system("mkdir -p /var/cache/debuginfo/src &> /dev/null");
+        for (size_t i = 0; i < ARRAY_SIZE(required_paths); i++) {
+                if (nc_file_exists(required_paths[i])) {
+                        continue;
+                }
+                if (!nc_mkdir_p(required_paths[i], 00755)) {
+                        fprintf(stderr, "Failed to mkdir: %s", strerror(errno));
+                }
         }
 
         if (fork() == 0) {

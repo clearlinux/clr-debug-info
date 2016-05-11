@@ -13,7 +13,6 @@
  *      Ikey Doherty <michael.i.doherty@intel.com>
  */
 
-
 #define _GNU_SOURCE
 
 #include <dirent.h>

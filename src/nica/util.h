@@ -37,6 +37,8 @@
 
 #define __nc_unused__ __attribute__((unused))
 
+#define ARRAY_SIZE(x) sizeof(x) / sizeof(x[0])
+
 DEF_AUTOFREE(char, free)
 DEF_AUTOFREE(FILE, fclose)
 
