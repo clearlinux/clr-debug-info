@@ -38,6 +38,8 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "nica/files.h"
+
 /*
 
 this program takes a directory /var/www/html/debuginfo.raw,
@@ -119,10 +121,8 @@ static void do_one_file(char *base1, char *base2, char *path, int isdir)
 
                 dir2 = dirname(dir);
 
-                if (asprintf(&command, "mkdir -p %s", dir2) >= 0) {
-                        //			printf("Running -%s-\n", command);
-                        system(command);
-                        free(command);
+                if (dir2) {
+                        (void)nc_mkdir_p(dir2, 00755);
                 }
 
                 free(dir);
