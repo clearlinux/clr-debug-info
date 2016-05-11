@@ -71,7 +71,7 @@ static int avoid_dupes(const char *url)
                 g_hash_table_replace(hash, strdup(url), data);
         }
 
-        pthread_mutex_lock(&dupes_mutex);
+        pthread_mutex_unlock(&dupes_mutex);
         return retval;
 }
 
