@@ -69,14 +69,16 @@ static void wait_for_loadavg(void)
         while (1) {
                 double d;
                 file = fopen("/proc/loadavg", "r");
-                if (!file)
+                if (!file) {
                         return;
+                }
                 line[0] = 0;
                 fgets(line, 4096, file);
                 fclose(file);
                 d = strtod(line, NULL);
-                if (d < 50)
+                if (d < 50) {
                         return;
+                }
                 sleep(5);
         }
 }
@@ -88,22 +90,25 @@ static void do_one_file(char *base1, char *base2, char *path, int isdir)
         struct stat buf1, buf2;
         int ret;
 
-        if (asprintf(&fullpath1, "%s%s", base1, path) < 0)
+        if (asprintf(&fullpath1, "%s%s", base1, path) < 0) {
                 return;
+        }
         if (asprintf(&fullpath2, "%s%s.tar", base2, path) < 0) {
                 free(fullpath1);
                 return;
         }
 
         ret = lstat(fullpath1, &buf1);
-        if (ret)
+        if (ret) {
                 goto out;
+        }
 
         if (S_ISLNK(buf1.st_mode)) {
                 //		printf("%s is a symlink\n", fullpath1);
                 ret = stat(fullpath1, &buf2);
-                if (!ret)
+                if (!ret) {
                         unsymlink(fullpath1);
+                }
                 ret = lstat(fullpath1, &buf1);
         }
 
@@ -175,8 +180,9 @@ static void recurse_dir(char *base1, char *base2, char *path)
         fullpath1 = NULL;
         fullpath2 = NULL;
 
-        if (asprintf(&fullpath1, "%s%s", base1, path) < 0)
+        if (asprintf(&fullpath1, "%s%s", base1, path) < 0) {
                 return;
+        }
 
         dir = opendir(fullpath1);
 
@@ -186,12 +192,15 @@ static void recurse_dir(char *base1, char *base2, char *path)
         }
         while (1) {
                 entry = readdir(dir);
-                if (!entry)
+                if (!entry) {
                         break;
-                if (strcmp(entry->d_name, ".") == 0)
+                }
+                if (strcmp(entry->d_name, ".") == 0) {
                         continue;
-                if (strcmp(entry->d_name, "..") == 0)
+                }
+                if (strcmp(entry->d_name, "..") == 0) {
                         continue;
+                }
 
                 newpath = NULL;
                 fullpath2 = NULL;
