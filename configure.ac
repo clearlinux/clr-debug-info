@@ -12,6 +12,7 @@ PKG_CHECK_MODULES([glib], [glib-2.0 gthread-2.0])
 PKG_CHECK_MODULES([curl], [libcurl])
 PKG_CHECK_MODULES([fuse], [fuse])
 PKG_CHECK_MODULES([SYSTEMD], [systemd])
+LT_INIT
 
 dir=""
 AC_ARG_WITH([systemdsystemunitdir], AS_HELP_STRING([--with-systemdsystemunitdir=DIR],
