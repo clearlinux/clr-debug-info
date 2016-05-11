@@ -47,6 +47,8 @@ Original copyright notice follows:
 #include <sys/xattr.h>
 #endif
 
+#include "nica/util.h"
+
 extern void try_to_get(const char *path, int pid, time_t timestamp);
 
 static int xmp_getattr(const char *path, struct stat *stbuf)
@@ -601,7 +603,7 @@ static int xmp_removexattr(const char *path, const char *name)
 
 int save_dir;
 
-static void *xmp_init(struct fuse_conn_info *conn)
+static void *xmp_init(__nc_unused__ struct fuse_conn_info *conn)
 {
         fchdir(save_dir);
         close(save_dir);
@@ -647,7 +649,7 @@ static struct fuse_operations xmp_oper = {
 
 extern char *prefix;
 
-int main(int argc, char *argv[])
+int main(__nc_unused__ int argc, __nc_unused__ char *argv[])
 {
         char *fake_argv[20];
         char *dir = "/usr/src/debug";

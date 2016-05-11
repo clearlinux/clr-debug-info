@@ -261,16 +261,12 @@ static void *server_thread(void *arg)
         return NULL;
 }
 
-int main(int argc, char **argv)
+int main(__nc_unused__ int argc, __nc_unused__ char **argv)
 {
         int sockfd;
         struct sockaddr_un sun;
         int ret;
         int curl_done = 0;
-
-        if (argc < -1) {
-                (void)argv;
-        }
 
         signal(SIGPIPE, SIG_IGN);
 
