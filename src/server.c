@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <malloc.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,7 +41,6 @@
 
 #include "nica/hashmap.h"
 #include <curl/curl.h>
-#include <glib.h>
 
 static pthread_mutex_t dupes_mutex = PTHREAD_MUTEX_INITIALIZER;
 

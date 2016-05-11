@@ -38,8 +38,6 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <glib.h>
-
 /*
 
 this program takes a directory /var/www/html/debuginfo.raw,

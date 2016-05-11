@@ -8,7 +8,6 @@ AM_SILENT_RULES([yes])
 AC_PROG_CC
 AC_LANG(C)
 AC_CONFIG_HEADERS([config.h])
-PKG_CHECK_MODULES([glib], [glib-2.0 gthread-2.0])
 PKG_CHECK_MODULES([curl], [libcurl])
 PKG_CHECK_MODULES([fuse], [fuse])
 PKG_CHECK_MODULES([SYSTEMD], [systemd])
