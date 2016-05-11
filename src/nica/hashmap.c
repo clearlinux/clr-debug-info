@@ -230,6 +230,21 @@ void *nc_hashmap_get(NcHashmap *self, const void *key)
         return NULL;
 }
 
+bool nc_hashmap_ensure_get(NcHashmap *self, const void *key, void **value)
+{
+        if (!self) {
+                return false;
+        }
+
+        NcHashmapEntry *row = nc_hashmap_get_entry(self, key);
+        if (!row) {
+                *value = NULL;
+                return false;
+        }
+        *value = row->value;
+        return true;
+}
+
 static bool nc_hashmap_remove_internal(NcHashmap *self, const void *key, bool remove)
 {
         if (!self) {
