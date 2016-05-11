@@ -39,6 +39,7 @@ clr_debug_prepare_SOURCES = src/prepare.c
 
 clr_debug_fuse_LDADD = ${fuse_LIBS} libnica.la
 clr_debug_daemon_LDADD = ${curl_LIBS} libnica.la
+clr_debug_prepare_LDADD = libnica.la
 
 systemdsystemunit_DATA = clr_debug_fuse.service clr_debug_daemon.service
 
