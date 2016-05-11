@@ -35,6 +35,8 @@
 
 #define streq(x, y) strcmp(x, y) == 0 ? true : false
 
+#define __nc_unused__ __attribute__((unused))
+
 DEF_AUTOFREE(char, free)
 DEF_AUTOFREE(FILE, fclose)
 
