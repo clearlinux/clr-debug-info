@@ -14,6 +14,15 @@ AM_CFLAGS = \
 
 bin_PROGRAMS = clr_debug_fuse clr_debug_daemon clr_debug_prepare
 
+noinst_LTLIBRARIES = \
+	libnica.la
+
+# Extract of libnica components
+libnica_la_SOURCES = \
+	src/nica/macros.h \
+	src/nica/hashmap.h \
+	src/nica/hashmap.c
+
 clr_debug_fuse_SOURCES = src/fuse.c src/client.c
 
 clr_debug_daemon_SOURCES = src/server.c
