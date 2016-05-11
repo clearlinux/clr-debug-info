@@ -52,13 +52,21 @@ Original copyright notice follows:
 
 extern void try_to_get(const char *path, int pid, time_t timestamp);
 
+__attribute__((always_inline)) static inline char *xmp_make_dotpath(const char *path)
+{
+        char *newp = NULL;
+        if (asprintf(&newp, ".%s", path) < 0) {
+                return NULL;
+        }
+        return newp;
+}
+
 static int xmp_getattr(const char *path, struct stat *stbuf)
 {
         int res;
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        newpath = NULL;
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
@@ -72,7 +80,6 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
         try_to_get(path, fuse_get_context()->pid, stbuf->st_mtime);
 
         res = lstat(newpath, stbuf);
-        free(newpath);
 
         if (res == -1) {
                 return -errno;
@@ -84,16 +91,13 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
 static int xmp_access(const char *path, int mask)
 {
         int res;
+        autofree(char) *newpath = NULL;
 
-        char *newpath = NULL;
-
-        newpath = NULL;
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         res = access(newpath, mask);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -104,16 +108,13 @@ static int xmp_access(const char *path, int mask)
 static int xmp_readlink(const char *path, char *buf, size_t size)
 {
         int res;
+        autofree(char) *newpath = NULL;
 
-        char *newpath = NULL;
-
-        newpath = NULL;
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         res = readlink(newpath, buf, size - 1);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -127,19 +128,17 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_
 {
         DIR *dp;
         struct dirent *de;
-        char *newpath;
+        autofree(char) *newpath = NULL;
+
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
+                return -ENOMEM;
+        }
 
         (void)offset;
         (void)fi;
 
-        newpath = NULL;
-        if (asprintf(&newpath, ".%s", path) < 0) {
-                return -ENOMEM;
-        }
-
         dp = opendir(newpath);
         if (dp == NULL) {
-                free(newpath);
                 return -errno;
         }
 
@@ -154,18 +153,15 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_
         }
 
         closedir(dp);
-        free(newpath);
         return 0;
 }
 
 static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 {
         int res;
+        autofree(char) *newpath = NULL;
 
-        char *newpath = NULL;
-
-        newpath = NULL;
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
@@ -181,7 +177,6 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
         } else {
                 res = mknod(newpath, mode, rdev);
         }
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -192,16 +187,13 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 static int xmp_mkdir(const char *path, mode_t mode)
 {
         int res;
+        autofree(char) *newpath = NULL;
 
-        char *newpath = NULL;
-
-        newpath = NULL;
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         res = mkdir(newpath, mode);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -212,16 +204,13 @@ static int xmp_mkdir(const char *path, mode_t mode)
 static int xmp_unlink(const char *path)
 {
         int res;
+        autofree(char) *newpath = NULL;
 
-        char *newpath = NULL;
-
-        newpath = NULL;
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         res = unlink(newpath);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -232,16 +221,13 @@ static int xmp_unlink(const char *path)
 static int xmp_rmdir(const char *path)
 {
         int res;
+        autofree(char) *newpath = NULL;
 
-        char *newpath = NULL;
-
-        newpath = NULL;
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         res = rmdir(newpath);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -252,20 +238,17 @@ static int xmp_rmdir(const char *path)
 static int xmp_symlink(const char *from, const char *to)
 {
         int res;
+        autofree(char) *newfrom = NULL;
+        autofree(char) *newto = NULL;
 
-        char *newfrom = NULL, *newto = NULL;
-
-        if (asprintf(&newfrom, ".%s", from) < 0) {
+        if ((newfrom = xmp_make_dotpath(from)) == NULL) {
                 return -ENOMEM;
         }
-        if (asprintf(&newto, ".%s", to) < 0) {
-                free(newfrom);
+        if ((newto = xmp_make_dotpath(to)) == NULL) {
                 return -ENOMEM;
         }
 
         res = symlink(newfrom, newto);
-        free(newfrom);
-        free(newto);
         if (res == -1) {
                 return -errno;
         }
@@ -276,20 +259,17 @@ static int xmp_symlink(const char *from, const char *to)
 static int xmp_rename(const char *from, const char *to)
 {
         int res;
+        autofree(char) *newfrom = NULL;
+        autofree(char) *newto = NULL;
 
-        char *newfrom = NULL, *newto = NULL;
-
-        if (asprintf(&newfrom, ".%s", from) < 0) {
+        if ((newfrom = xmp_make_dotpath(from)) == NULL) {
                 return -ENOMEM;
         }
-        if (asprintf(&newto, ".%s", to) < 0) {
-                free(newfrom);
+        if ((newto = xmp_make_dotpath(to)) == NULL) {
                 return -ENOMEM;
         }
 
         res = rename(newfrom, newto);
-        free(newfrom);
-        free(newto);
         if (res == -1) {
                 return -errno;
         }
@@ -300,19 +280,17 @@ static int xmp_rename(const char *from, const char *to)
 static int xmp_link(const char *from, const char *to)
 {
         int res;
+        autofree(char) *newfrom = NULL;
+        autofree(char) *newto = NULL;
 
-        char *newfrom = NULL, *newto = NULL;
-
-        if (asprintf(&newfrom, ".%s", from) < 0)
+        if ((newfrom = xmp_make_dotpath(from)) == NULL) {
                 return -ENOMEM;
-        if (asprintf(&newto, ".%s", to) < 0) {
-                free(newfrom);
+        }
+        if ((newto = xmp_make_dotpath(to)) == NULL) {
                 return -ENOMEM;
         }
 
         res = link(newfrom, newto);
-        free(newfrom);
-        free(newto);
 
         if (res == -1) {
                 return -errno;
@@ -324,14 +302,13 @@ static int xmp_link(const char *from, const char *to)
 static int xmp_chmod(const char *path, mode_t mode)
 {
         int res;
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         res = chmod(newpath, mode);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -342,14 +319,13 @@ static int xmp_chmod(const char *path, mode_t mode)
 static int xmp_chown(const char *path, uid_t uid, gid_t gid)
 {
         int res;
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         res = lchown(newpath, uid, gid);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -360,14 +336,13 @@ static int xmp_chown(const char *path, uid_t uid, gid_t gid)
 static int xmp_truncate(const char *path, off_t size)
 {
         int res;
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         res = truncate(newpath, size);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -379,15 +354,14 @@ static int xmp_truncate(const char *path, off_t size)
 static int xmp_utimens(const char *path, const struct timespec ts[2])
 {
         int res;
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         /* don't use utime/utimes since they follow symlinks */
         res = utimensat(0, newpath, ts, AT_SYMLINK_NOFOLLOW);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -399,14 +373,13 @@ static int xmp_utimens(const char *path, const struct timespec ts[2])
 static int xmp_open(const char *path, struct fuse_file_info *fi)
 {
         int res;
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         res = open(newpath, fi->flags);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -420,15 +393,14 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
 {
         int fd;
         int res;
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         (void)fi;
         fd = open(newpath, O_RDONLY);
-        free(newpath);
         if (fd == -1) {
                 return -errno;
         }
@@ -447,15 +419,14 @@ static int xmp_write(const char *path, const char *buf, size_t size, off_t offse
 {
         int fd;
         int res;
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         (void)fi;
         fd = open(newpath, O_WRONLY);
-        free(newpath);
         if (fd == -1) {
                 return -errno;
         }
@@ -472,14 +443,13 @@ static int xmp_write(const char *path, const char *buf, size_t size, off_t offse
 static int xmp_statfs(const char *path, struct statvfs *stbuf)
 {
         int res;
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         res = statvfs(newpath, stbuf);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -514,19 +484,19 @@ static int xmp_fallocate(const char *path, int mode, off_t offset, off_t length,
 {
         int fd;
         int res;
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
         (void)fi;
 
         if (mode) {
                 return -EOPNOTSUPP;
         }
-        if (asprintf(&newpath, ".%s", path) < 0) {
+
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         fd = open(newpath, O_WRONLY);
-        free(newpath);
         if (fd == -1) {
                 return -errno;
         }
@@ -543,13 +513,13 @@ static int xmp_fallocate(const char *path, int mode, off_t offset, off_t length,
 static int xmp_setxattr(const char *path, const char *name, const char *value, size_t size,
                         int flags)
 {
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
+
         int res = lsetxattr(newpath, name, value, size, flags);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -558,13 +528,13 @@ static int xmp_setxattr(const char *path, const char *name, const char *value, s
 
 static int xmp_getxattr(const char *path, const char *name, char *value, size_t size)
 {
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
+
         int res = lgetxattr(newpath, name, value, size);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
@@ -573,28 +543,28 @@ static int xmp_getxattr(const char *path, const char *name, char *value, size_t 
 
 static int xmp_listxattr(const char *path, char *list, size_t size)
 {
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
 
         int res = llistxattr(newpath, list, size);
-        free(newpath);
-        if (res == -1)
+        if (res == -1) {
                 return -errno;
+        }
         return res;
 }
 
 static int xmp_removexattr(const char *path, const char *name)
 {
-        char *newpath = NULL;
+        autofree(char) *newpath = NULL;
 
-        if (asprintf(&newpath, ".%s", path) < 0) {
+        if ((newpath = xmp_make_dotpath(path)) == NULL) {
                 return -ENOMEM;
         }
+
         int res = lremovexattr(newpath, name);
-        free(newpath);
         if (res == -1) {
                 return -errno;
         }
