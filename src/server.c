@@ -55,8 +55,9 @@ static int avoid_dupes(const char *url)
         void *value;
         pthread_mutex_lock(&dupes_mutex);
 
-        if (hash == NULL)
+        if (hash == NULL) {
                 hash = g_hash_table_new(g_str_hash, g_str_equal);
+        }
 
         if (g_hash_table_lookup_extended(hash, url, NULL, &value)) {
                 unsigned long tm;
@@ -85,12 +86,14 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
         FILE *file;
         struct stat statbuf;
 
-        if (avoid_dupes(url))
+        if (avoid_dupes(url)) {
                 return 300;
+        }
 
         curl = curl_easy_init();
-        if (curl == NULL)
+        if (curl == NULL) {
                 return 301;
+        }
 
         strcpy(filename, "/tmp/clr-debug-info-XXXXXX");
 
@@ -113,8 +116,9 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
         code = curl_easy_perform(curl);
 
         /* can't trust the file if we get an error back */
-        if (code != 0)
+        if (code != 0) {
                 unlink(filename);
+        }
 
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &ret);
         fflush(file);
@@ -126,8 +130,9 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
          * boot may result in a 304 if the debuginfo had been downloaded in a
          * previous boot.
          */
-        if (ret != 200 && ret != 404 && ret != 304)
+        if (ret != 200 && ret != 404 && ret != 304) {
                 urlcounter++;
+        }
 
         if (ret == 200) {
                 char *command = NULL;
@@ -168,8 +173,9 @@ static void *server_thread(void *arg)
         struct timeval before, after;
 
         fd = (unsigned long)arg;
-        if (fd < 0)
+        if (fd < 0) {
                 return NULL;
+        }
 
         gettimeofday(&before, NULL);
 
@@ -261,19 +267,23 @@ int main(int argc, char **argv)
         int ret;
         int curl_done = 0;
 
-        if (argc < -1)
+        if (argc < -1) {
                 (void)argv;
+        }
 
         signal(SIGPIPE, SIG_IGN);
 
-        if (access("/var/cache/debuginfo/lib/", F_OK))
+        if (access("/var/cache/debuginfo/lib/", F_OK)) {
                 system("mkdir -p /var/cache/debuginfo/lib/ &> /dev/null");
-        if (access("/var/cache/debuginfo/src/", F_OK))
+        }
+        if (access("/var/cache/debuginfo/src/", F_OK)) {
                 system("mkdir -p /var/cache/debuginfo/src/ &> /dev/null");
+        }
 
         sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-        if (sockfd < 0)
+        if (sockfd < 0) {
                 return EXIT_FAILURE;
+        }
 
         sun.sun_family = AF_UNIX;
         strcpy(sun.sun_path, ":clr-debug-info");

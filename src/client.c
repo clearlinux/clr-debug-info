@@ -58,8 +58,9 @@ void try_to_get(const char *path, int pid, time_t timestamp)
         //	printf("Trying to aquire %s\n", path);
 
         sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-        if (sockfd < 0)
+        if (sockfd < 0) {
                 return;
+        }
 
         sun.sun_family = AF_UNIX;
         strcpy(sun.sun_path, ":clr-debug-info");
@@ -105,8 +106,9 @@ void try_to_get(const char *path, int pid, time_t timestamp)
 
         ret = 1;
 
-        if (!timestamp)
+        if (!timestamp) {
                 ret = select(sockfd + 1, &rfds, NULL, &rfds, &tv);
+        }
         if (ret == 0 && !shorttime) {
                 printf("timeout for %s\n", path);
                 deadtime = time(NULL) + 4;
