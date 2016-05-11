@@ -38,6 +38,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "nica/hashmap.h"
 #include <curl/curl.h>
 #include <glib.h>
 
@@ -47,7 +48,7 @@ char *urls[2] = { "https://debuginfo.clearlinux.org/debuginfo/",
                   "https://debuginfo.clearlinux.org/debuginfo/" };
 int urlcounter = 1;
 
-static GHashTable *hash;
+static NcHashmap *hash = NULL;
 
 static int avoid_dupes(const char *url)
 {
@@ -56,10 +57,10 @@ static int avoid_dupes(const char *url)
         pthread_mutex_lock(&dupes_mutex);
 
         if (hash == NULL) {
-                hash = g_hash_table_new(g_str_hash, g_str_equal);
+                hash = nc_hashmap_new_full(nc_string_hash, nc_string_compare, free, NULL);
         }
 
-        if (g_hash_table_lookup_extended(hash, url, NULL, &value)) {
+        if (nc_hashmap_ensure_get(hash, url, &value)) {
                 unsigned long tm;
                 tm = (unsigned long)value;
                 if (time(NULL) - tm < 600) {
@@ -69,7 +70,7 @@ static int avoid_dupes(const char *url)
                 unsigned long tm;
                 tm = time(NULL);
                 void *data = (void *)(unsigned long)tm;
-                g_hash_table_replace(hash, strdup(url), data);
+                nc_hashmap_put(hash, strdup(url), data);
         }
 
         pthread_mutex_unlock(&dupes_mutex);
@@ -317,5 +318,10 @@ int main(int argc, char **argv)
                 pthread_create(&thread, NULL, server_thread, (void *)(unsigned long)clientsock);
                 pthread_detach(thread);
         }
+
+        if (hash) {
+                nc_hashmap_free(hash);
+        }
+
         close(sockfd);
 }

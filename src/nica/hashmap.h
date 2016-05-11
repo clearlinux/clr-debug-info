@@ -169,6 +169,17 @@ bool nc_hashmap_put(NcHashmap *map, const void *key, void *value);
 void *nc_hashmap_get(NcHashmap *map, const void *key);
 
 /**
+ * Ensure the value is definitely contained in the map and set
+ * the resulting pointer with it's value.
+ *
+ * @param key Unique key to obtain a value for
+ * @param value The associated value if it exists, otherwise NULL
+ *
+ * @returns True if the key exists, otherwise false
+ */
+bool nc_hashmap_ensure_get(NcHashmap *map, const void *key, void **value);
+
+/**
  * Determine if the key has an associated value in the NcHashmap
  *
  * @param key Unique key to check value for
