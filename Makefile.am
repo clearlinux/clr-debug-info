@@ -23,7 +23,9 @@ noinst_LTLIBRARIES = \
 libnica_la_SOURCES = \
 	src/nica/macros.h \
 	src/nica/hashmap.h \
-	src/nica/hashmap.c
+	src/nica/hashmap.c \
+	src/nica/files.h \
+	src/nica/files.c
 
 clr_debug_fuse_SOURCES = src/fuse.c src/client.c
 
