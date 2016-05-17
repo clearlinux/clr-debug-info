@@ -23,6 +23,7 @@
 
 #define _GNU_SOURCE
 
+#include "nica/util.h"
 #include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -54,6 +55,7 @@ void try_to_get(const char *path, int pid, time_t timestamp)
         struct timeval tv;
         struct ucred cred;
         int shorttime = 0;
+        __nc_unused__ size_t wr = -1;
 
         //	printf("Trying to aquire %s\n", path);
 
@@ -89,7 +91,7 @@ void try_to_get(const char *path, int pid, time_t timestamp)
                 close(sockfd);
                 return;
         }
-        write(sockfd, command, strlen(command) + 1);
+        wr = write(sockfd, command, strlen(command) + 1);
 
         FD_ZERO(&rfds);
         FD_SET(sockfd, &rfds);
