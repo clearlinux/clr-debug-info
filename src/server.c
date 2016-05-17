@@ -177,7 +177,9 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
                              "tar -C /var/cache/debuginfo/%s --no-same-owner  -xf %s",
                              prefix,
                              filename) >= 0) {
-                        system(command);
+                        if (system(command) != 0) {
+                                fputs("Warning: tar extraction failed\n", stderr);
+                        }
                 }
         }
         unlink(filename);
@@ -203,6 +205,7 @@ static void *server_thread(void *arg)
         autofree(char) *url = NULL;
         time_t timestamp;
         struct timeval before, after;
+        __nc_unused__ size_t wr = -1;
 
         fd = (unsigned long)arg;
         if (fd < 0) {
@@ -278,7 +281,7 @@ static void *server_thread(void *arg)
                        (int)timestamp);
 
         /* tell the other side we're done with the download */
-        write(fd, "ok", 3);
+        wr = write(fd, "ok", 3);
 
 thread_end:
         if (fd >= 0) {
