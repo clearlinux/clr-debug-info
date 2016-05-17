@@ -202,7 +202,9 @@ static void recurse_dir(char *base1, char *base2, char *path)
 
                 newpath = NULL;
                 fullpath2 = NULL;
-                asprintf(&fullpath2, "%s/%s", fullpath1, entry->d_name);
+                if (asprintf(&fullpath2, "%s/%s", fullpath1, entry->d_name) < 0) {
+                        return;
+                }
                 if (asprintf(&newpath, "%s/%s", path, entry->d_name) >= 0) {
                         struct stat sb;
                         stat(fullpath2, &sb);

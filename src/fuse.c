@@ -576,7 +576,7 @@ int save_dir;
 
 static void *xmp_init(__nc_unused__ struct fuse_conn_info *conn)
 {
-        fchdir(save_dir);
+        __nc_unused__ int r = fchdir(save_dir);
         close(save_dir);
 
         return NULL;
@@ -633,7 +633,8 @@ int main(__nc_unused__ int argc, __nc_unused__ char *argv[])
         sleep(1);
 
         if (access("/sys/module/fuse/", F_OK)) {
-                system("modprobe fuse");
+                /* Failure would happen later in fuse_main, reduce double checks. */
+                __nc_unused__ int ret = system("modprobe fuse");
         }
         signal(SIGPIPE, SIG_IGN);
 
