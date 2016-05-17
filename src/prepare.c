@@ -86,7 +86,8 @@ int tarcount;
 
 static void do_one_file(char *base1, char *base2, char *path, int isdir)
 {
-        char *fullpath1 = NULL, *fullpath2 = NULL, *dir, *dir2;
+        char *dir2 = NULL;
+        autofree(char) * fullpath1, *fullpath2, *dir = NULL;
         struct stat buf1, buf2;
         int ret;
 
@@ -94,13 +95,12 @@ static void do_one_file(char *base1, char *base2, char *path, int isdir)
                 return;
         }
         if (asprintf(&fullpath2, "%s%s.tar", base2, path) < 0) {
-                free(fullpath1);
                 return;
         }
 
         ret = lstat(fullpath1, &buf1);
         if (ret) {
-                goto out;
+                return;
         }
 
         if (S_ISLNK(buf1.st_mode)) {
@@ -125,7 +125,6 @@ static void do_one_file(char *base1, char *base2, char *path, int isdir)
                         (void)nc_mkdir_p(dir2, 00755);
                 }
 
-                free(dir);
                 chdir(base1);
                 if (!isdir &&
                     asprintf(&command,
@@ -163,20 +162,13 @@ static void do_one_file(char *base1, char *base2, char *path, int isdir)
                         free(command);
                 }
         }
-
-out:
-        free(fullpath1);
-        free(fullpath2);
 }
 
 static void recurse_dir(char *base1, char *base2, char *path)
 {
         DIR *dir;
-        char *fullpath1, *fullpath2, *newpath;
+        char *fullpath1 = NULL;
         struct dirent *entry;
-
-        fullpath1 = NULL;
-        fullpath2 = NULL;
 
         if (asprintf(&fullpath1, "%s%s", base1, path) < 0) {
                 return;
@@ -185,10 +177,13 @@ static void recurse_dir(char *base1, char *base2, char *path)
         dir = opendir(fullpath1);
 
         if (!dir) {
-                free(fullpath1);
                 return;
         }
+
         while (1) {
+                autofree(char) *fullpath2 = NULL;
+                autofree(char) *newpath = NULL;
+
                 entry = readdir(dir);
                 if (!entry) {
                         break;
@@ -215,11 +210,9 @@ static void recurse_dir(char *base1, char *base2, char *path)
                         } else {
                                 do_one_file(base1, base2, newpath, 0);
                         }
-                        free(newpath);
                 }
         }
         closedir(dir);
-        free(fullpath1);
 }
 
 int main(int argc, char **argv)
