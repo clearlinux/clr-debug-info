@@ -54,18 +54,21 @@ as much as possible.
 static void unsymlink(char *filename)
 {
         char *target;
+        __nc_unused__ int r;
 
         target = canonicalize_file_name(filename);
         //	sleep(1);
         //	printf("Symlink %s points to %s\n", filename, target);
         unlink(filename);
-        link(target, filename);
+        r = link(target, filename);
 }
 
 static void wait_for_loadavg(void)
 {
         FILE *file;
         char line[4096];
+        __nc_unused__ char *ret = NULL;
+
         while (1) {
                 double d;
                 file = fopen("/proc/loadavg", "r");
@@ -73,7 +76,7 @@ static void wait_for_loadavg(void)
                         return;
                 }
                 line[0] = 0;
-                fgets(line, 4096, file);
+                ret = fgets(line, 4096, file);
                 fclose(file);
                 d = strtod(line, NULL);
                 if (d < 50) {
@@ -90,6 +93,7 @@ static void do_one_file(char *base1, char *base2, char *path, int isdir)
         autofree(char) * fullpath1, *fullpath2, *dir = NULL;
         struct stat buf1, buf2;
         int ret;
+        int sret;
 
         if (asprintf(&fullpath1, "%s%s", base1, path) < 0) {
                 return;
@@ -125,7 +129,11 @@ static void do_one_file(char *base1, char *base2, char *path, int isdir)
                         (void)nc_mkdir_p(dir2, 00755);
                 }
 
-                chdir(base1);
+                if (chdir(base1) != 0) {
+                        fprintf(stderr, "Failed to chdir: %s\n", strerror(errno));
+                        return;
+                }
+
                 if (!isdir &&
                     asprintf(&command,
                              "tar --no-recursion -C %s -Jcf %s %s &",
@@ -139,7 +147,9 @@ static void do_one_file(char *base1, char *base2, char *path, int isdir)
                                 wait_for_loadavg();
                                 tarcount = 0;
                         }
-                        system(command);
+                        if ((sret = system(command)) != 0) {
+                                fprintf(stderr, "Failure in command: [%d] %s\n", sret, command);
+                        }
                         free(command);
                 }
 
@@ -158,7 +168,9 @@ static void do_one_file(char *base1, char *base2, char *path, int isdir)
                                 wait_for_loadavg();
                                 tarcount = 0;
                         }
-                        system(command);
+                        if ((sret = system(command)) != 0) {
+                                fprintf(stderr, "Failure in command: [%d] %s\n", sret, command);
+                        }
                         free(command);
                 }
         }
