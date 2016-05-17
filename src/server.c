@@ -29,6 +29,7 @@
 #include <malloc.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,6 +52,10 @@ char *urls[2] = { "https://debuginfo.clearlinux.org/debuginfo/",
 int urlcounter = 1;
 
 static NcHashmap *hash = NULL;
+
+#define MAX_CONNECTIONS 16
+
+static atomic_int current_connection_count = 0;
 
 static int avoid_dupes(const char *url)
 {
@@ -77,6 +82,30 @@ static int avoid_dupes(const char *url)
 
         pthread_mutex_unlock(&dupes_mutex);
         return retval;
+}
+
+/**
+ * Get the current connection count atomically
+ */
+static int get_current_connection_count(void)
+{
+        return atomic_load(&current_connection_count);
+}
+
+/**
+ * Increment the connection counter atomically
+ */
+static inline void inc_connection_count(void)
+{
+        atomic_fetch_add(&current_connection_count, 1);
+}
+
+/**
+ * Decrement the connection counter atomically
+ */
+static inline void dec_connection_count(void)
+{
+        atomic_fetch_sub(&current_connection_count, 1);
 }
 
 static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
@@ -168,16 +197,17 @@ double timedelta(struct timeval before, struct timeval after)
 
 static void *server_thread(void *arg)
 {
-        int fd;
+        int fd = -1;
         char buf[PATH_MAX + 8];
         int ret;
-        char *prefix, *path, *url, *c;
+        char *prefix, *path, *c = NULL;
+        autofree(char) *url = NULL;
         time_t timestamp;
         struct timeval before, after;
 
         fd = (unsigned long)arg;
         if (fd < 0) {
-                return NULL;
+                goto thread_end;
         }
 
         gettimeofday(&before, NULL);
@@ -185,14 +215,12 @@ static void *server_thread(void *arg)
         memset(buf, 0, sizeof(buf));
         ret = read(fd, buf, PATH_MAX + 8);
         if (ret < 0) {
-                close(fd);
-                return NULL;
+                goto thread_end;
         }
         prefix = buf;
         c = strchr(buf, ':');
         if (!c) {
-                close(fd);
-                return NULL;
+                goto thread_end;
         }
         *c = 0;
         timestamp = strtoull(buf, NULL, 10);
@@ -200,8 +228,7 @@ static void *server_thread(void *arg)
         prefix = c;
         path = strchr(c, ':');
         if (!path) {
-                close(fd);
-                return NULL;
+                goto thread_end;
         }
         *path = 0;
         path++;
@@ -211,24 +238,20 @@ static void *server_thread(void *arg)
          * directories already exist by this point.
          */
         if (strlen(path) == 1 && strcmp(path, "/") == 0) {
-                close(fd);
-                return NULL;
+                goto thread_end;
         }
 
         if (strstr(path, "..") || strstr(prefix, "..") || strstr(path, "'") || strstr(path, ";")) {
-                close(fd);
-                return NULL;
+                goto thread_end;
         }
 
         if (strcmp(prefix, "lib") != 0 && strcmp(prefix, "src") != 0) {
                 /* invalid prefix */
-                close(fd);
-                return NULL;
+                goto thread_end;
         }
         url = NULL;
         if (asprintf(&url, "%s%s%s.tar", urls[urlcounter % 2], prefix, path) < 0) {
-                close(fd);
-                return NULL;
+                goto thread_end;
         }
 
         //	printf("Getting url %s    %i:%06i\n", url, before.tv_sec, before.tv_usec);
@@ -257,9 +280,12 @@ static void *server_thread(void *arg)
 
         /* tell the other side we're done with the download */
         write(fd, "ok", 3);
-        close(fd);
 
-        free(url);
+thread_end:
+        if (fd >= 0) {
+                close(fd);
+        }
+        dec_connection_count();
         return NULL;
 }
 
@@ -311,11 +337,21 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
                 malloc_trim(0);
                 clientsock = accept(sockfd, NULL, NULL);
 
+                /* Too many connections, wait for the next loop/retry */
+                if (get_current_connection_count() >= MAX_CONNECTIONS) {
+                        /* printf("Too many connections!\n"); */
+                        shutdown(clientsock, SHUT_RDWR);
+                        close(clientsock);
+                        continue;
+                }
+
                 if (!curl_done) {
                         curl_global_init(CURL_GLOBAL_ALL);
                         curl_done = 1;
                 }
 
+                /* Update the connection count and start the new thread */
+                inc_connection_count();
                 pthread_create(&thread, NULL, server_thread, (void *)(unsigned long)clientsock);
                 pthread_detach(thread);
         }
