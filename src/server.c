@@ -167,7 +167,7 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
         }
 
         if (ret == 200) {
-                char *command = NULL;
+                autofree(char) *command = NULL;
                 //		printf("Filename is %s\n", filename);
 
                 memset(&statbuf, 0, sizeof(statbuf));
@@ -178,7 +178,6 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
                              prefix,
                              filename) >= 0) {
                         system(command);
-                        free(command);
                 }
         }
         unlink(filename);
