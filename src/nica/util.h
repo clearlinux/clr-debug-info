@@ -37,6 +37,8 @@
 
 #define __nc_unused__ __attribute__((unused))
 
+#define __nc_inline__ __attribute__((always_inline))
+
 #define ARRAY_SIZE(x) sizeof(x) / sizeof(x[0])
 
 DEF_AUTOFREE(char, free)
