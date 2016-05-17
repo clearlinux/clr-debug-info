@@ -5,6 +5,8 @@ This is a lightly modified version of the fuse example "fusexmp.c",
 the original copyright notice is retained below.
 The modifications to the example are
         (C) 2013 Arjan van de Ven <arjanvandeven@gmail.com>
+            Ikey Doherty <michael.i.doherty@intel.com>
+
 
 
 Original copyright notice follows:
