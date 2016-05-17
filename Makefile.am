@@ -21,11 +21,12 @@ noinst_LTLIBRARIES = \
 
 # Extract of libnica components
 libnica_la_SOURCES = \
-	src/nica/macros.h \
-	src/nica/hashmap.h \
-	src/nica/hashmap.c \
+	src/nica/files.c \
 	src/nica/files.h \
-	src/nica/files.c
+	src/nica/hashmap.c \
+	src/nica/hashmap.h \
+	src/nica/util.h
+
 
 clr_debug_fuse_SOURCES = src/fuse.c src/client.c
 
