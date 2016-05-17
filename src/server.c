@@ -87,7 +87,7 @@ static int avoid_dupes(const char *url)
 /**
  * Get the current connection count atomically
  */
-static int get_current_connection_count(void)
+__nc_inline__ static inline int get_current_connection_count(void)
 {
         return atomic_load(&current_connection_count);
 }
@@ -95,7 +95,7 @@ static int get_current_connection_count(void)
 /**
  * Increment the connection counter atomically
  */
-static inline void inc_connection_count(void)
+__nc_inline__ static inline void inc_connection_count(void)
 {
         atomic_fetch_add(&current_connection_count, 1);
 }
@@ -103,7 +103,7 @@ static inline void inc_connection_count(void)
 /**
  * Decrement the connection counter atomically
  */
-static inline void dec_connection_count(void)
+__nc_inline__ static inline void dec_connection_count(void)
 {
         atomic_fetch_sub(&current_connection_count, 1);
 }
