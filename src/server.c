@@ -301,11 +301,13 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
         const char *required_paths[] = { "/var/cache/debuginfo/lib", "/var/cache/debuginfo/src" };
 
         for (size_t i = 0; i < ARRAY_SIZE(required_paths); i++) {
-                if (nc_file_exists(required_paths[i])) {
+                const char *req_path = required_paths[i];
+                if (nc_file_exists(req_path)) {
                         continue;
                 }
-                if (!nc_mkdir_p(required_paths[i], 00755)) {
-                        fprintf(stderr, "Failed to mkdir: %s", strerror(errno));
+                if (!nc_mkdir_p(req_path, 00755)) {
+                        fprintf(stderr, "Failed to mkdir: %s %s\n", strerror(errno), req_path);
+                        return EXIT_FAILURE;
                 }
         }
 
