@@ -18,6 +18,7 @@
  *
  *   Authors:
  *         Arjan van de Ven <arjanvandeven@gmail.com>
+ *         Ikey Doherty <michael.i.doherty@intel.com>
  *
  */
 
