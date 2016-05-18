@@ -46,6 +46,8 @@
 
 #include <curl/curl.h>
 
+#include "config.h"
+
 static pthread_mutex_t dupes_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char *urls[2] = { "https://debuginfo.clearlinux.org/debuginfo/",
@@ -55,8 +57,6 @@ int urlcounter = 1;
 static NcHashmap *hash = NULL;
 
 #define MAX_CONNECTIONS 16
-
-static atomic_int current_connection_count = 0;
 
 static int avoid_dupes(const char *url)
 {
@@ -85,6 +85,9 @@ static int avoid_dupes(const char *url)
         return retval;
 }
 
+static atomic_int current_connection_count = 0;
+#ifdef HAVE_ATOMIC_SUPPORT
+
 /**
  * Get the current connection count atomically
  */
@@ -108,6 +111,44 @@ __nc_inline__ static inline void dec_connection_count(void)
 {
         atomic_fetch_sub(&current_connection_count, 1);
 }
+#else /* HAVE_ATOMIC_SUPPORT */
+
+/* No stdatomic compiler support, fallback to pthread mutex (slower) */
+pthread_mutex_t con_count_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/**
+ * Get the current connection count via mutex
+ */
+__nc_inline__ static inline int get_current_connection_count(void)
+{
+        int r;
+        pthread_mutex_lock(&con_count_mutex);
+        r = current_connection_count;
+        pthread_mutex_unlock(&con_count_mutex);
+        return r;
+}
+
+/**
+ * Increment the connection counter via mutex
+ */
+__nc_inline__ static inline void inc_connection_count(void)
+{
+        pthread_mutex_lock(&con_count_mutex);
+        current_connection_count++;
+        pthread_mutex_unlock(&con_count_mutex);
+}
+
+/**
+ * Decrement the connection counter via mutex
+ */
+__nc_inline__ static inline void dec_connection_count(void)
+{
+        pthread_mutex_lock(&con_count_mutex);
+        current_connection_count--;
+        pthread_mutex_unlock(&con_count_mutex);
+}
+
+#endif /* !(HAVE_ATOMIC_SUPPORT) */
 
 static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 {
