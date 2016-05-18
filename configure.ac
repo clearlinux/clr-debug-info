@@ -27,5 +27,32 @@ AC_ARG_WITH([systemdtmpfilesdir], AS_HELP_STRING([--with-systemdtmpfilesdir=DIR]
 test -z "${dir}" && dir=/usr/lib/tmpfiles.d
 AC_SUBST(tmpfilesdir, [${dir}])
 
+AC_CHECK_HEADER([stdatomic.h], [have_atomics="yes"], [have_atomics="no"])
+if test x$have_atomics = "xyes"; then
+        AC_DEFINE([HAVE_ATOMIC_SUPPORT], [1], [stdatomic supported by compiler])
+else
+        AC_MSG_WARN([C11 stdatomic support unavailable. Falling back to slow mutex])
+fi
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
+
+AC_MSG_RESULT([
+        clr-debuginfo $VERSION
+
+        prefix:                 ${prefix}
+        libdir:                 ${libdir}
+        sysconfdir:             ${sysconfdir}
+        exec_prefix:            ${exec_prefix}
+        bindir:                 ${bindir}
+        datarootdir:            ${datarootdir}
+
+        compiler:               ${CC}
+        cflags:                 ${CFLAGS}
+        ldflags:                ${LDFLAGS}
+
+        systemd-unit-dir:       ${systemdsystemunitdir}
+        tmpfiles.d:             ${tmpfilesdir}
+
+        C11 stdatomic support:  ${have_atomics}
+])
