@@ -30,7 +30,6 @@
 #include <malloc.h>
 #include <pthread.h>
 #include <signal.h>
-#include <stdatomic.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +46,10 @@
 #include <curl/curl.h>
 
 #include "config.h"
+
+#ifdef HAVE_ATOMIC_SUPPORT
+#include <stdatomic.h>
+#endif
 
 static pthread_mutex_t dupes_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -85,8 +88,9 @@ static int avoid_dupes(const char *url)
         return retval;
 }
 
-static atomic_int current_connection_count = 0;
 #ifdef HAVE_ATOMIC_SUPPORT
+
+static atomic_int current_connection_count = 0;
 
 /**
  * Get the current connection count atomically
@@ -112,6 +116,8 @@ __nc_inline__ static inline void dec_connection_count(void)
         atomic_fetch_sub(&current_connection_count, 1);
 }
 #else /* HAVE_ATOMIC_SUPPORT */
+
+static int current_connection_count = 0;
 
 /* No stdatomic compiler support, fallback to pthread mutex (slower) */
 pthread_mutex_t con_count_mutex = PTHREAD_MUTEX_INITIALIZER;
