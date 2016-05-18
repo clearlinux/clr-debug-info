@@ -27,6 +27,7 @@
 #define _GNU_SOURCE
 
 #include <errno.h>
+#include <linux/capability.h>
 #include <malloc.h>
 #include <pthread.h>
 #include <signal.h>
@@ -34,6 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/prctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -346,6 +348,18 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
         int ret;
         int curl_done = 0;
         const char *required_paths[] = { "/var/cache/debuginfo/lib", "/var/cache/debuginfo/src" };
+
+        if (prctl(PR_SET_DUMPABLE, 0) != 0) {
+                fprintf(stderr,
+                        "Failed to disable PR_SET_DUMPABLE. Do NOT gdb attach this process: %s\n",
+                        strerror(errno));
+        }
+
+        if (geteuid() == 0) {
+                if (prctl(PR_CAPBSET_DROP, CAP_SYS_ADMIN) != 0) {
+                        fprintf(stderr, "Failed to drop caps: %s\n", strerror(errno));
+                }
+        }
 
         for (size_t i = 0; i < ARRAY_SIZE(required_paths); i++) {
                 const char *req_path = required_paths[i];
