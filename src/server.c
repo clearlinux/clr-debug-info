@@ -191,6 +191,18 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
         curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
 
+        /*
+         * Some sane timeout values to prevent stalls
+         *
+         * Connect timeout is for first connection to the server.
+         * The low speed timeout is for slow downloads. Since many
+         * files are several mB large, we want to prevent them from
+         * taking forever. (1kB/sec avg over 30secs).
+         */
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30);
+        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30);
+        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1024);
+
         if (timestamp) {
                 curl_easy_setopt(curl, CURLOPT_TIMECONDITION, CURL_TIMECOND_IFMODSINCE);
                 curl_easy_setopt(curl, CURLOPT_TIMEVALUE, timestamp);
