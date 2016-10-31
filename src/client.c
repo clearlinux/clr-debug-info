@@ -85,6 +85,7 @@ void try_to_get(const char *path, int pid, time_t timestamp)
         if (ret == 0 && cred.pid == pid) {
                 printf("Recursion\n");
                 close(sockfd);
+                return;
         }
 
         command = NULL;
