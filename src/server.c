@@ -189,6 +189,8 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+        curl_easy_setopt(curl, CURLOPT_PIPEWAIT, 1);
 
         if (timestamp) {
                 curl_easy_setopt(curl, CURLOPT_TIMECONDITION, CURL_TIMECOND_IFMODSINCE);
@@ -322,7 +324,7 @@ static void *server_thread(void *arg)
         }
 
         gettimeofday(&after, NULL);
-#If 0        
+#if 0        
         if (timedelta(before, after) > 0.6)
                 printf("Request for %s took %5.2f seconds (%i - %i)\n",
                        url,
