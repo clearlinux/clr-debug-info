@@ -190,7 +190,6 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
         curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-        curl_easy_setopt(curl, CURLOPT_PIPEWAIT, 1);
 
         if (timestamp) {
                 curl_easy_setopt(curl, CURLOPT_TIMECONDITION, CURL_TIMECOND_IFMODSINCE);
