@@ -55,8 +55,8 @@
 
 static pthread_mutex_t dupes_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-char *urls[2] = { "https://debuginfo.clearlinux.org/debuginfo/",
-                  "https://debuginfo.clearlinux.org/debuginfo/" };
+char *urls[2] = { "https://cdn.download.clearlinux.org/debuginfo/",
+                  "https://cdn.download.clearlinux.org/debuginfo/" };
 int urlcounter = 1;
 
 static NcHashmap *hash = NULL;
