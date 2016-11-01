@@ -162,6 +162,7 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 {
         CURLcode code;
         long ret;
+        long changed;
         int fd;
         char filename[PATH_MAX];
         CURL *curl = NULL;
@@ -203,6 +204,9 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
         curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30);
         curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1024);
 
+        /* request timestamp of files from server */
+        curl_easy_setopt(curl, CURLOPT_FILETIME, 1);
+
         if (timestamp) {
                 curl_easy_setopt(curl, CURLOPT_TIMECONDITION, CURL_TIMECOND_IFMODSINCE);
                 curl_easy_setopt(curl, CURLOPT_TIMEVALUE, timestamp);
@@ -230,6 +234,17 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
         }
 
         if (ret == 200) {
+                /* get timestamp, if any */
+                curl_easy_getinfo(curl, CURLINFO_FILETIME, &changed);
+                if (changed >= 0) {
+                        struct timespec times[2];
+                        times[0].tv_sec = (time_t)changed;
+                        times[0].tv_nsec = 0;
+                        times[1].tv_sec = (time_t)changed;
+                        times[1].tv_nsec = 0;
+                        futimens(fd, times);
+                }
+
                 autofree(char) *command = NULL;
                 //		printf("Filename is %s\n", filename);
 
