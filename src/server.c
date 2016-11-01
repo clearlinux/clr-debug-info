@@ -322,6 +322,7 @@ static void *server_thread(void *arg)
         }
 
         gettimeofday(&after, NULL);
+#If 0        
         if (timedelta(before, after) > 0.6)
                 printf("Request for %s took %5.2f seconds (%i - %i)\n",
                        url,
@@ -329,7 +330,7 @@ static void *server_thread(void *arg)
                            (1.0 * after.tv_usec - before.tv_usec) / 1000000.0,
                        ret,
                        (int)timestamp);
-
+#endif
         /* tell the other side we're done with the download */
         wr = write(fd, "ok", 3);
 
