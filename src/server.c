@@ -282,7 +282,6 @@ static void *server_thread(void *arg)
         if (ret < 0) {
                 goto thread_end;
         }
-        prefix = buf;
         c = strchr(buf, ':');
         if (!c) {
                 goto thread_end;
