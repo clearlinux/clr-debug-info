@@ -237,7 +237,7 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
                 stat(filename, &statbuf);
                 if (statbuf.st_size > 0 &&
                     asprintf(&command,
-                             "tar -C /var/cache/debuginfo/%s --no-same-owner  -xf %s",
+                             "tar -C /var/cache/debuginfo/%s --no-same-owner  --no-same-permissions  -xf %s",
                              prefix,
                              filename) >= 0) {
                         if (system(command) != 0) {
