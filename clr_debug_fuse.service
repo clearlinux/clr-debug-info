@@ -5,6 +5,7 @@ After=clr_debug_daemon.service
 [Service]
 Type=simple
 ExecStart=/usr/bin/clr_debug_fuse
+DefaultDependencies=no
 
 [Install]
 WantedBy=multi-user.target
