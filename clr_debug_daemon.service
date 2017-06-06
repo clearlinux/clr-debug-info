@@ -1,10 +1,10 @@
 [Unit]
 Description=Clear Linux debuginfo daemon
+DefaultDependencies=no
 
 [Service]
 Type=simple
 ExecStart=/usr/bin/clr_debug_daemon
-DefaultDependencies=no
 
 [Install]
 WantedBy=multi-user.target
