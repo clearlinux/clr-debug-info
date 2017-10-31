@@ -27,9 +27,11 @@
 #define _GNU_SOURCE
 
 #include <errno.h>
+#include <grp.h>
 #include <linux/capability.h>
 #include <malloc.h>
 #include <pthread.h>
+#include <pwd.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -252,7 +254,8 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
                 stat(filename, &statbuf);
                 if (statbuf.st_size > 0 &&
                     asprintf(&command,
-                             "tar -C /var/cache/debuginfo/%s --no-same-owner  --no-same-permissions  -xf %s",
+                             "tar -C /var/cache/debuginfo/%s --no-same-owner "
+                             "--no-same-permissions  -xf %s",
                              prefix,
                              filename) >= 0) {
                         if (system(command) != 0) {
@@ -375,7 +378,18 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
         struct sockaddr_un sun;
         int ret;
         int curl_done = 0;
+        uid_t dbg_user = 0;
+        gid_t dbg_group = 0;
+        struct passwd *passwdentry;
         const char *required_paths[] = { "/var/cache/debuginfo/lib", "/var/cache/debuginfo/src" };
+
+        umask(0);
+        passwdentry = getpwnam("dbginfo");
+        if (passwdentry) {
+                dbg_user = passwdentry->pw_uid;
+                dbg_group = passwdentry->pw_gid;
+        }
+        endpwent();
 
         if (prctl(PR_SET_DUMPABLE, 0) != 0) {
                 fprintf(stderr,
@@ -391,11 +405,24 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
 
         for (size_t i = 0; i < ARRAY_SIZE(required_paths); i++) {
                 const char *req_path = required_paths[i];
-                if (nc_file_exists(req_path)) {
-                        continue;
+                struct stat st = { .st_ino = 0 };
+                if (lstat(req_path, &st) == 0) {
+                        /* If the file already exists, check ownership
+                         * and delete tree if incorrect. Essentially a
+                         * one-off operation to transition from root owned to
+                         * dbginfo owned */
+                        if (st.st_uid == dbg_user) {
+                                continue;
+                        }
+                        fprintf(stderr, "Removing old debug information %s\n", req_path);
+                        nc_rm_rf(req_path);
                 }
                 if (!nc_mkdir_p(req_path, 00755)) {
                         fprintf(stderr, "Failed to mkdir: %s %s\n", strerror(errno), req_path);
+                        return EXIT_FAILURE;
+                }
+                if (chown(req_path, dbg_user, dbg_group) != 0) {
+                        fprintf(stderr, "Failed to chown: %s %s\n", strerror(errno), req_path);
                         return EXIT_FAILURE;
                 }
         }
@@ -421,6 +448,19 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
 
         if (listen(sockfd, 16) < 0) {
                 printf("Failed to listen:%s \n", strerror(errno));
+                return EXIT_FAILURE;
+        }
+
+        if (setgid(dbg_group)) {
+                fprintf(stderr, "Unable to drop privileges setgid %s\n", strerror(errno));
+                return EXIT_FAILURE;
+        }
+        if (setgroups(1, &dbg_group)) {
+                fprintf(stderr, "Unable to drop privileges setgroups %s\n", strerror(errno));
+                return EXIT_FAILURE;
+        }
+        if (setuid(dbg_user)) {
+                fprintf(stderr, "Unable to drop privileges setuid  %s\n", strerror(errno));
                 return EXIT_FAILURE;
         }
 
