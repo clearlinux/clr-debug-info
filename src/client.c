@@ -37,8 +37,8 @@
 #include <unistd.h>
 
 /* 0.75 seconds timeout */
-#define TIMEOUT 750000
-#define TIMEOUT2 15000
+#define TIMEOUT 75000
+#define TIMEOUT2 1500
 #define TIMEOUT3 500
 
 char *prefix = "src";
