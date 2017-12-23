@@ -137,7 +137,7 @@ static void do_one_file(char *base1, char *base2, char *path, int isdir)
 
                 if (!isdir &&
                     asprintf(&command,
-                             "tar --no-recursion -C %s -Jcf %s %s &",
+                             "tar --no-recursion -h -C %s -Jcf %s %s &",
                              base1,
                              fullpath2,
                              path) >= 0) {
