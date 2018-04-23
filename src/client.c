@@ -66,12 +66,11 @@ void try_to_get(const char *path, int pid, time_t timestamp)
         }
 
         sun.sun_family = AF_UNIX;
-        strcpy(sun.sun_path, ":clr-debug-info");
-        sun.sun_path[0] = 0; /* anonymous unix socket */
+        strcpy(sun.sun_path, "/run/clr-debug-info");
 
         ret = connect(sockfd,
                       (struct sockaddr *)&sun,
-                      offsetof(struct sockaddr_un, sun_path) + strlen(":clr-debug-info") + 1);
+                      offsetof(struct sockaddr_un, sun_path) + strlen("/run/clr-debug-info") + 1);
         if (ret < 0) {
                 printf("Cannot connect %s\n", strerror(errno));
                 close(sockfd);

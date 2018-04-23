@@ -1,0 +1,9 @@
+[Unit]
+Description=Clear Linux OS debuginfo daemon
+
+[Socket]
+ListenStream=/run/clr-debug-info
+SocketMode=0600
+
+[Install]
+WantedBy=sockets.target

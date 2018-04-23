@@ -1,4 +1,4 @@
-EXTRA_DIST = COPYING clr_debug_fuse.service clr_debug_daemon.service debuginfo.conf
+EXTRA_DIST = COPYING clr_debug_fuse.service clr_debug_daemon.service clr_debug_daemon.socket debuginfo.conf
 
 DISTCHECK_CONFIGURE_FLAGS = \
 	--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir) \
@@ -33,7 +33,8 @@ clr_debug_fuse_SOURCES = src/fuse.c src/client.c
 clr_debug_daemon_SOURCES = src/server.c
 clr_debug_daemon_CFLAGS = \
 	-pthread \
-	$(AM_CFLAGS)
+	$(AM_CFLAGS) \
+	$(LIBSYSTEMD_CFLAGS)
 
 clr_debug_prepare_SOURCES = src/prepare.c
 

@@ -6,11 +6,13 @@ AC_INIT(clr-debug-info, 43, arjan@linux.intel.com)
 AM_INIT_AUTOMAKE([foreign -Wall -W subdir-objects])
 AM_SILENT_RULES([yes])
 AC_PROG_CC
+AM_PROG_AR
 AC_LANG(C)
 AC_CONFIG_HEADERS([config.h])
 PKG_CHECK_MODULES([curl], [libcurl])
 PKG_CHECK_MODULES([fuse], [fuse])
 PKG_CHECK_MODULES([SYSTEMD], [systemd])
+PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd])
 LT_INIT
 
 dir=""

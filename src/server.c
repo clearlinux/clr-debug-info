@@ -49,6 +49,8 @@
 
 #include <curl/curl.h>
 
+#include "systemd/sd-daemon.h"
+
 #include "config.h"
 
 #ifdef HAVE_ATOMIC_SUPPORT
@@ -352,7 +354,7 @@ static void *server_thread(void *arg)
         }
 
         gettimeofday(&after, NULL);
-#if 0        
+#if 0
         if (timedelta(before, after) > 0.6)
                 printf("Request for %s took %5.2f seconds (%i - %i)\n",
                        url,
@@ -429,27 +431,35 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
 
         signal(SIGPIPE, SIG_IGN);
 
-        sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-        if (sockfd < 0) {
-                return EXIT_FAILURE;
-        }
+	if (sd_listen_fds(0) == 1) {
+		/* systemd socket activation */
+		printf("Received socket from systemd socket activation\n");
+		sockfd = SD_LISTEN_FDS_START + 0;
+	} else if (sd_listen_fds(0) > 1) {
+		printf("Too many file descriptors received.\n");
+		exit(1);
+	} else {
+		sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+		if (sockfd < 0) {
+			return EXIT_FAILURE;
+		}
 
-        sun.sun_family = AF_UNIX;
-        strcpy(sun.sun_path, ":clr-debug-info");
-        sun.sun_path[0] = 0; /* anonymous unix socket */
+		sun.sun_family = AF_UNIX;
+		strcpy(sun.sun_path, "/run/clr-debug-info");
 
-        ret = bind(sockfd,
-                   (struct sockaddr *)&sun,
-                   offsetof(struct sockaddr_un, sun_path) + strlen(":clr-debug-info") + 1);
-        if (ret < 0) {
-                printf("Failed to bind:%s \n", strerror(errno));
-                return EXIT_FAILURE;
-        }
+		ret = bind(sockfd,
+			(struct sockaddr *)&sun,
+			offsetof(struct sockaddr_un, sun_path) + strlen("/run/clr-debug-info") + 1);
+		if (ret < 0) {
+			printf("Failed to bind:%s \n", strerror(errno));
+			return EXIT_FAILURE;
+		}
 
-        if (listen(sockfd, 16) < 0) {
-                printf("Failed to listen:%s \n", strerror(errno));
-                return EXIT_FAILURE;
-        }
+		if (listen(sockfd, 16) < 0) {
+			printf("Failed to listen:%s \n", strerror(errno));
+			return EXIT_FAILURE;
+		}
+	}
 
         if (setgid(dbg_group)) {
                 fprintf(stderr, "Unable to drop privileges setgid %s\n", strerror(errno));
