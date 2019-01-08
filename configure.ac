@@ -15,6 +15,8 @@ PKG_CHECK_MODULES([SYSTEMD], [systemd])
 PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd])
 LT_INIT
 
+AC_DEFINE([SOCKET_PATH], ["/run/clr-debug-info"], [path to communication socket])
+
 dir=""
 AC_ARG_WITH([systemdsystemunitdir], AS_HELP_STRING([--with-systemdsystemunitdir=DIR],
 	    [path to systemd system service dir @<:@default=/usr/lib/systemd/system@:>@]), [dir=${withval}],

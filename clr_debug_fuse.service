@@ -1,6 +1,7 @@
 [Unit]
 Description=Clear Linux debuginfo fuse monitor
-After=clr_debug_daemon.service
+After=clr_debug_daemon.socket
+Requires=clr_debug_daemon.socket
 DefaultDependencies=no
 
 [Service]

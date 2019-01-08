@@ -36,6 +36,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "config.h"
+
 /* 0.75 seconds timeout */
 #define TIMEOUT 75000
 #define TIMEOUT2 1500
@@ -66,13 +68,13 @@ void try_to_get(const char *path, int pid, time_t timestamp)
         }
 
         sun.sun_family = AF_UNIX;
-        strcpy(sun.sun_path, "/run/clr-debug-info");
+        strcpy(sun.sun_path, SOCKET_PATH);
 
         ret = connect(sockfd,
                       (struct sockaddr *)&sun,
-                      offsetof(struct sockaddr_un, sun_path) + strlen("/run/clr-debug-info") + 1);
+                      offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH) + 1);
         if (ret < 0) {
-                printf("Cannot connect %s\n", strerror(errno));
+                printf("Cannot connect to %s: %s\n", SOCKET_PATH, strerror(errno));
                 close(sockfd);
                 return;
         }
