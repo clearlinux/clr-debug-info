@@ -60,7 +60,7 @@ void try_to_get(const char *path, int pid, time_t timestamp)
         int shorttime = 0;
         __nc_unused__ size_t wr = -1;
 
-        //	printf("Trying to aquire %s\n", path);
+        // printf("Trying to aquire %s\n", path);
 
         sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
         if (sockfd < 0) {

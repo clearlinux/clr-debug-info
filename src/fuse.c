@@ -76,6 +76,16 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
         res = lstat(newpath, stbuf);
 
         /*
+         * filter out things that never should get fetched
+         * this prevents us from asking curl to fetch us useless things
+         */
+        if (strncmp(path, "/.Trash", strlen("/.Trash")) == 0) {
+                return -ENOENT;
+        } else if (strcmp(path, "/") == 0) {
+                return 0;
+        }
+
+        /*
          * get the file. if the st_mtime is set, this is just an async refresh, otherwise it's
          * a synchronous request.
          */

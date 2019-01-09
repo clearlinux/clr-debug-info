@@ -57,6 +57,8 @@
 #include <stdatomic.h>
 #endif
 
+#define TIMEOUT 600 /* 10 minutes */
+
 static pthread_mutex_t dupes_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char *urls[2] = { "https://cdn.download.clearlinux.org/debuginfo/",
@@ -433,15 +435,14 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
 
         if (sd_listen_fds(0) == 1) {
                 /* systemd socket activation */
-                printf("Received socket from systemd socket activation\n");
                 sockfd = SD_LISTEN_FDS_START + 0;
         } else if (sd_listen_fds(0) > 1) {
                 printf("Too many file descriptors received.\n");
-                exit(1);
+                exit(EXIT_FAILURE);
         } else {
                 sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
                 if (sockfd < 0) {
-                        return EXIT_FAILURE;
+                        exit(EXIT_FAILURE);
                 }
 
                 sun.sun_family = AF_UNIX;
@@ -451,34 +452,52 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
                         (struct sockaddr *)&sun,
                         offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH) + 1);
                 if (ret < 0) {
-                        printf("Failed to bind:%s \n", strerror(errno));
-                        return EXIT_FAILURE;
+                        fprintf(stderr, "Failed to bind:%s \n", strerror(errno));
+                        exit(EXIT_FAILURE);
                 }
 
                 if (listen(sockfd, 16) < 0) {
-                        printf("Failed to listen:%s \n", strerror(errno));
-                        return EXIT_FAILURE;
+                        fprintf(stderr, "Failed to listen:%s \n", strerror(errno));
+                        exit(EXIT_FAILURE);
                 }
         }
 
         if (setgid(dbg_group)) {
                 fprintf(stderr, "Unable to drop privileges setgid %s\n", strerror(errno));
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
         if (setgroups(1, &dbg_group)) {
                 fprintf(stderr, "Unable to drop privileges setgroups %s\n", strerror(errno));
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
         if (setuid(dbg_user)) {
                 fprintf(stderr, "Unable to drop privileges setuid  %s\n", strerror(errno));
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
 
         while (1) {
+                fd_set rfds;
+                struct timeval tv;
+                int ret;
                 int clientsock;
                 pthread_t thread;
 
                 malloc_trim(0);
+
+                /* use select() to timeout and exit gracefully */
+                FD_ZERO(&rfds);
+                FD_SET(sockfd, &rfds);
+                tv.tv_sec = TIMEOUT;
+                tv.tv_usec = 0;
+                ret = select(sockfd + 1, &rfds, NULL, NULL, &tv);
+                if (ret == -1) {
+                        perror("select()");
+                        exit(EXIT_FAILURE);
+                } else if (ret == 0) {
+                        break;
+                }
+
+
                 clientsock = accept(sockfd, NULL, NULL);
 
                 /* Too many connections, wait for the next loop/retry */
@@ -503,6 +522,4 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
         if (hash) {
                 nc_hashmap_free(hash);
         }
-
-        close(sockfd);
 }
