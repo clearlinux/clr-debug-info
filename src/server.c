@@ -32,6 +32,7 @@
 #include <malloc.h>
 #include <pthread.h>
 #include <pwd.h>
+#include <libgen.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -164,7 +165,7 @@ __nc_inline__ static inline void dec_connection_count(void)
 
 #endif /* !(HAVE_ATOMIC_SUPPORT) */
 
-static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
+static int curl_get_file(const char *url, const char *prefix, time_t timestamp, char *path)
 {
         CURLcode code;
         long ret;
@@ -252,21 +253,46 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
                 }
 
                 autofree(char) *command = NULL;
-                //		printf("Filename is %s\n", filename);
 
                 memset(&statbuf, 0, sizeof(statbuf));
                 stat(filename, &statbuf);
-                if (statbuf.st_size > 0 &&
-                    asprintf(&command,
-                             "tar -C /var/cache/debuginfo/%s --no-same-owner "
-                             "--no-same-permissions  -xf %s",
-                             prefix,
-                             filename) >= 0) {
-                        if (system(command) != 0) {
-                                fputs("Warning: tar extraction failed\n", stderr);
-                        }
+                if (statbuf.st_size <= 0) {
+                        goto out;
                 }
+
+                if (asprintf(&command, "tar -C /var/cache/debuginfo/%s --no-same-owner "
+                             "--transform 's:\\(.*\\)/:\\1/.:' "
+                             "--no-same-permissions -xf %s",
+                             prefix,
+                             filename) < 0) {
+                        goto out;
+                }
+
+                char *nfile;
+                if (asprintf(&nfile, "/usr/%s/debug%s", prefix, path) < 0) {
+                        goto out;
+                }
+
+                /* dirname modifies `path` so make tfile after nfile */
+                char *tfile;
+                if (asprintf(&tfile, "/usr/%s/debug%s/.%s", prefix,
+                             dirname(path), basename(path)) < 0) {
+                        free(nfile);
+                        goto out;
+                }
+
+                if (system(command) != 0) {
+                        fputs("Warning: tar extraction failed\n", stderr);
+                } else {
+                        rename(tfile, nfile);
+                }
+                free(tfile);
+                free(nfile);
+
+                unlink(tfile);
         }
+
+out:
         unlink(filename);
         curl_easy_cleanup(curl);
         fclose(file);
@@ -341,7 +367,7 @@ static void *server_thread(void *arg)
         }
 
         //	printf("Getting url %s    %i:%06i\n", url, before.tv_sec, before.tv_usec);
-        ret = curl_get_file(url, prefix, timestamp);
+        ret = curl_get_file(url, prefix, timestamp, path);
 
         switch (ret) {
         case 200:
@@ -351,7 +377,7 @@ static void *server_thread(void *arg)
                 // ignore these error codes
                 break;
         default:
-                printf("Request for %s resulted in error %i\n", url, ret);
+                fprintf(stderr, "Request for %s resulted in error %i\n", url, ret);
                 break;
         }
 
@@ -437,7 +463,7 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
                 /* systemd socket activation */
                 sockfd = SD_LISTEN_FDS_START + 0;
         } else if (sd_listen_fds(0) > 1) {
-                printf("Too many file descriptors received.\n");
+                fprintf(stderr, "Too many file descriptors received.\n");
                 exit(EXIT_FAILURE);
         } else {
                 sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
