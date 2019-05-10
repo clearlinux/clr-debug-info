@@ -2,7 +2,7 @@
  *   Clear Linux -- automatic debug information installation
  *
  *      Copyright (C) 2013  Arjan van de Ven
- * 	Curl portions borrowed from the Fenrus Update code
+ *     Curl portions borrowed from the Fenrus Update code
  *          which in part is (C) 2012 Intel Corporation
  *      Copyright (C) 2014  Intel Corporation
  *
@@ -165,16 +165,15 @@ __nc_inline__ static inline void dec_connection_count(void)
 
 #endif /* !(HAVE_ATOMIC_SUPPORT) */
 
-static int curl_get_file(const char *url, const char *prefix, time_t timestamp, char *path)
+static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 {
         CURLcode code;
         long ret;
         long changed;
         int fd;
-        char filename[PATH_MAX];
+        autofree(char) *filename = NULL;
         CURL *curl = NULL;
         FILE *file;
-        struct stat statbuf;
 
         if (avoid_dupes(url)) {
                 return 300;
@@ -185,12 +184,15 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp, 
                 return 301;
         }
 
-        strcpy(filename, "/tmp/clr-debug-info-XXXXXX");
-
+        // fprintf(stderr, "Fetching %s, prefix %s, path %s\n", url, prefix, path);
+        if (asprintf(&filename, "/tmp/clr-debug-info-XXXXXX") < 0) {
+                curl_easy_cleanup(curl);
+                return 418;
+        }
         fd = mkstemp(filename);
         if (fd < 0) {
                 curl_easy_cleanup(curl);
-                return 500;
+                return 418;
         }
 
         file = fdopen(fd, "w");
@@ -228,7 +230,7 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp, 
 
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &ret);
         fflush(file);
-        //	printf("HTTP return code is %i\n", ret);
+        //        printf("HTTP return code is %i\n", ret);
 
         /* HTTP 304 is returned if (a) the cached debuginfo has the same
          * timestamp or is newer than that on the server and (b) we haven't
@@ -241,6 +243,9 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp, 
         }
 
         if (ret == 200) {
+                autofree(char) *command = NULL;
+                struct stat statbuf;
+
                 /* get timestamp, if any */
                 curl_easy_getinfo(curl, CURLINFO_FILETIME, &changed);
                 if (changed >= 0) {
@@ -252,44 +257,42 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp, 
                         futimens(fd, times);
                 }
 
-                autofree(char) *command = NULL;
-
                 memset(&statbuf, 0, sizeof(statbuf));
                 stat(filename, &statbuf);
                 if (statbuf.st_size <= 0) {
+                        ret = 418;
                         goto out;
                 }
 
+                /* test extraction first */
                 if (asprintf(&command, "tar -C /var/cache/debuginfo/%s --no-same-owner "
-                             "--transform 's:\\(.*\\)/:\\1/.:' "
-                             "--no-same-permissions -xf %s",
+                             "--no-same-permissions -tf %s",
                              prefix,
                              filename) < 0) {
-                        goto out;
-                }
-
-                char *nfile;
-                if (asprintf(&nfile, "/usr/%s/debug%s", prefix, path) < 0) {
-                        goto out;
-                }
-
-                /* dirname modifies `path` so make tfile after nfile */
-                char *tfile;
-                if (asprintf(&tfile, "/usr/%s/debug%s/.%s", prefix,
-                             dirname(path), basename(path)) < 0) {
-                        free(nfile);
+                        ret = 418;
                         goto out;
                 }
 
                 if (system(command) != 0) {
-                        fputs("Warning: tar extraction failed\n", stderr);
-                } else {
-                        rename(tfile, nfile);
+                        ret = 418;
+                        fprintf(stderr, "Error: tar validation failed\n");
+                        goto out;
                 }
-                free(tfile);
-                free(nfile);
 
-                unlink(tfile);
+                free(command); /* reuse */
+                if (asprintf(&command, "tar -C /var/cache/debuginfo/%s --no-same-owner "
+                             "--no-same-permissions -xf %s",
+                             prefix,
+                             filename) < 0) {
+                        ret = 418;
+                        goto out;
+                }
+
+                if (system(command) != 0) {
+                        ret = 418;
+                        fprintf(stderr, "Error: tar extraction failed\n");
+                        goto out;
+                }
         }
 
 out:
@@ -366,8 +369,8 @@ static void *server_thread(void *arg)
                 goto thread_end;
         }
 
-        //	printf("Getting url %s    %i:%06i\n", url, before.tv_sec, before.tv_usec);
-        ret = curl_get_file(url, prefix, timestamp, path);
+        //        printf("Getting url %s    %i:%06i\n", url, before.tv_sec, before.tv_usec);
+        ret = curl_get_file(url, prefix, timestamp);
 
         switch (ret) {
         case 200:
