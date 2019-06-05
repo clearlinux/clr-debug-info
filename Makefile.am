@@ -14,7 +14,9 @@ AM_CFLAGS = \
 
 AM_CPPFLAGS = $(AM_CFLAGS) ${curl_CFLAGS} ${fuse_CFLAGS}
 
-bin_PROGRAMS = clr_debug_fuse clr_debug_daemon clr_debug_prepare
+bin_PROGRAMS = clr_debug_fuse clr_debug_daemon
+
+dist_bin_SCRIPTS = scripts/clr_debug_prepare
 
 noinst_LTLIBRARIES = \
 	libnica.la
@@ -36,12 +38,9 @@ clr_debug_daemon_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(LIBSYSTEMD_CFLAGS)
 
-clr_debug_prepare_SOURCES = src/prepare.c
-
 
 clr_debug_fuse_LDADD = ${fuse_LIBS} libnica.la
 clr_debug_daemon_LDADD = ${curl_LIBS} libnica.la ${LIBSYSTEMD_LIBS}
-clr_debug_prepare_LDADD = libnica.la
 
 systemdsystemunit_DATA = clr_debug_fuse.service clr_debug_daemon.service clr_debug_daemon.socket
 

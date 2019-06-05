@@ -2,7 +2,6 @@
 *.o
 clr_debug_fuse
 clr_debug_daemon
-clr_debug_prepare
 .deps/
 .dirstamp
 Makefile

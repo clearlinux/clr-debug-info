@@ -1,0 +1,146 @@
+#!/bin/bash
+#
+# Clear Linux -- automatic debuginfo preparation
+#
+# Copyright 2019 Intel Corporation
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 3 or later of the License.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program. If not, see <http://www.gnu.org/licenses/>.
+
+if [ $# -eq 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $0 [SOURCEDIR] [DESTDIR]"
+  echo "Generates automatic debuginfo tarballs in DESTDIR using content from SOURCEDIR."
+  echo "The default SOURCEDIR and DESTDIR are /var/www/html/debuginfo.raw and"
+  echo "/var/www/html/debuginfo, respectively."
+  exit 0
+fi >&2
+
+if [ $# -eq 2 ]; then
+  if [ ! -d "$1" ]; then
+    echo "ERROR: SOURCEDIR argument must be an existing directory"
+    exit 1
+  fi
+fi >&2
+
+export SRC="${1:-/var/www/html/debuginfo.raw}"
+export DEST="${2:-/var/www/html/debuginfo}"
+
+srclist=$(mktemp -p .)
+destlist=$(mktemp -p .)
+trap "rm $srclist $destlist" EXIT
+
+set -o pipefail
+
+# First, scan the state of the SRC tree, containing all content for debuginfo RPMs.
+if ! find "$SRC" -mindepth 4 -printf "%p %T@ %y\n" | sed "s|$SRC||" | sort -k 1 > "$srclist"; then
+  echo "ERROR: expected content in $SRC"
+  exit 1
+fi
+
+# Next, scan the state of the DEST tree, containing previously generated
+# automatic debuginfo tarballs. Will be empty on first run.
+mkdir -p "$DEST"
+find "$DEST" -mindepth 2 -name '*.tar' -printf "%p %T@ %y\n" | sed "s|$DEST||;s|\.tar | |" | sort -k 1 > "$destlist"
+
+
+process_one() {
+  srcname="$1"
+  destname="$2"
+  filetype="$3"
+  srcloc="$SRC/$srcname"
+  srcdir="$SRC/$(echo "$srcname" | sed -r 's@^(/usr/(lib|share|src)/debug(/src)?).*@\1@')"
+  tarcontent="$(echo "$srcname" | sed -r 's@^/usr/(lib|share|src)/debug(/src)?@.@')"
+  destdir="$DEST/$(dirname "$destname")"
+  dest="$DEST/$destname.tar"
+
+  echo "Creating $destname.tar ..."
+
+  mkdir -p "$destdir"
+  if [ "$filetype" = "f" ]; then
+    tar --no-recursion -C "$srcdir" -Jcf "$dest" "$tarcontent"
+  elif [ "$filetype" = "l" ]; then
+    # We "unsymlink" non-broken symlinks as an optimization by adding the
+    # symlink target to the dest tarball, transforming the name as appropriate.
+    if target=$(realpath -e "$srcloc" --relative-to="$srcdir" 2> /dev/null); then
+      tar --no-recursion -C "$srcdir" -Jcf "$dest" --transform='s|.*|'"$tarcontent"'|' "$target"
+    else
+      tar --no-recursion -C "$srcdir" -Jcf "$dest" "$tarcontent"
+    fi
+  elif [ "$filetype" = "d" ]; then
+    tar --no-recursion -C "$srcdir" -Jcf "$dest" "$tarcontent"
+  fi
+}
+export -f process_one
+
+
+gawk '
+BEGIN { OFS = "\t" }
+LIST == "src" {
+  name = $1
+  srcname = name
+  ret = sub(/^\/usr\/lib\/debug/, "/lib", name)
+  if (ret == 0) {
+    ret = sub(/^\/usr\/src\/debug/, "/src", name)
+    if (ret == 0) {
+      ret = sub(/^\/usr\/share\/debug\/src/, "/src", name)
+      if (ret == 0) {
+        ret = sub(/^\/usr\/share\/debug/, "/lib", name)
+        if (ret == 0) {
+          print "Error: unexpected debuginfo file:", name
+          exit 1
+        }
+      }
+    }
+  }
+  src[name]["srcname"] = srcname
+  src[name]["time"] = $2
+  src[name]["type"] = $3
+  src[name]["done"] = 0
+}
+LIST == "dest" {
+  dest_content = 1
+  name = $1
+  time = $2
+  type = $3
+  if (name in src) {
+    # No need to recreate directory tars if they exist
+    if (src[name]["type"] == "d") {
+      src[name]["done"] = 1
+      next
+    } else {
+      # Only regenerate content if timestamp is newer
+      if (time < src[name]["time"]) {
+        print src[name]["srcname"], name, src[name]["type"]
+      }
+      src[name]["done"] = 1
+    }
+  }
+}
+END {
+  PROCINFO["sorted_in"] = "@ind_str_asc"
+  if (dest_content == 0) {
+    for (s in src) {
+      print src[s]["srcname"], s, src[s]["type"]
+    }
+  } else {
+    for (s in src) {
+      if (src[s]["done"] == 0) {
+        print src[s]["srcname"], s, src[s]["type"]
+      }
+    }
+  }
+}
+' LIST="src" "$srclist" LIST="dest" "$destlist" \
+  | parallel --colsep '\t' process_one
+
+
+# vi: ft=sh et sw=2 sts=2
