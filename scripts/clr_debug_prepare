@@ -66,17 +66,17 @@ process_one() {
 
   mkdir -p "$destdir"
   if [ "$filetype" = "f" ]; then
-    tar --no-recursion -C "$srcdir" -Jcf "$dest" "$tarcontent"
+    tar --no-recursion -C "$srcdir" --zstd -cf "$dest" "$tarcontent"
   elif [ "$filetype" = "l" ]; then
     # We "unsymlink" non-broken symlinks as an optimization by adding the
     # symlink target to the dest tarball, transforming the name as appropriate.
     if target=$(realpath -e "$srcloc" --relative-to="$srcdir" 2> /dev/null); then
-      tar --no-recursion -C "$srcdir" -Jcf "$dest" --transform='s|.*|'"$tarcontent"'|' "$target"
+      tar --no-recursion -C "$srcdir" --zstd -cf "$dest" --transform='s|.*|'"$tarcontent"'|' "$target"
     else
-      tar --no-recursion -C "$srcdir" -Jcf "$dest" "$tarcontent"
+      tar --no-recursion -C "$srcdir" --zstd -cf "$dest" "$tarcontent"
     fi
   elif [ "$filetype" = "d" ]; then
-    tar --no-recursion -C "$srcdir" -Jcf "$dest" "$tarcontent"
+    tar --no-recursion -C "$srcdir" --zstd -cf "$dest" "$tarcontent"
   fi
 }
 export -f process_one
