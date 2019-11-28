@@ -62,9 +62,11 @@
 
 static pthread_mutex_t dupes_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-char *urls[2] = { "https://cdn.download.clearlinux.org/debuginfo/",
-                  "https://cdn-alt.download.clearlinux.org/debuginfo/" };
+char *urls_default[] = { "https://cdn.download.clearlinux.org/debuginfo/",
+                         "https://cdn-alt.download.clearlinux.org/debuginfo/" };
+int urls_size = 2;
 int urlcounter = 1;
+char **urls = urls_default;
 
 static NcHashmap *hash = NULL;
 
@@ -95,6 +97,40 @@ static int avoid_dupes(const char *url)
 
         pthread_mutex_unlock(&dupes_mutex);
         return retval;
+}
+
+/*
+ * Read URLs from environment variable, space separated
+ */
+int configure_urls(void)
+{
+	const char *env_var = getenv("CLR_DEBUGINFO_URLS");
+	const char *token = env_var;
+	int count = 0;
+	char **urls_new = NULL;
+	if (env_var) while (1) {
+		int token_len = strcspn(token, " \t\n");
+		if (token_len) {
+			count++;
+			urls_new = realloc(urls_new, count * sizeof(char*));
+			if (!urls_new) { perror("realloc()"); exit(EXIT_FAILURE); }
+
+			char *url = calloc(token_len+1, sizeof(char));
+			if (!url) { perror("calloc()"); exit(EXIT_FAILURE); }
+
+			urls_new[count-1] = strncpy(url, token, token_len);
+			token += token_len;
+		}
+		if (*token == '\0') break;
+		token++;
+	}
+	if (count) {
+		// Abandon defaults
+		urls = urls_new;
+		urls_size = count;
+		urlcounter = 0;
+	}
+	return count;
 }
 
 #ifdef HAVE_ATOMIC_SUPPORT
@@ -365,7 +401,7 @@ static void *server_thread(void *arg)
                 goto thread_end;
         }
         url = NULL;
-        if (asprintf(&url, "%s%s%s.tar", urls[urlcounter % 2], prefix, path) < 0) {
+        if (asprintf(&url, "%s%s%s.tar", urls[urlcounter % urls_size], prefix, path) < 0) {
                 goto thread_end;
         }
 
@@ -415,6 +451,15 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
         gid_t dbg_group = 0;
         struct passwd *passwdentry;
         const char *required_paths[] = { "/var/cache/debuginfo/lib", "/var/cache/debuginfo/src" };
+
+	if (configure_urls()) {
+		fprintf(stderr, "Using urls from environment\n");
+	} else {
+		fprintf(stderr, "Using compiled default urls\n");
+	}
+	for (int i=0; i<urls_size; i++) {
+		fprintf(stderr, "url: %s\n", urls[i]);
+	}
 
         umask(0);
         passwdentry = getpwnam("dbginfo");
