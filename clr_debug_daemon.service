@@ -5,8 +5,6 @@ DefaultDependencies=no
 [Service]
 Type=simple
 ExecStart=/usr/bin/clr_debug_daemon
-# Uncomment to use custom URLs, space separated
-#Environment="CLR_DEBUGINFO_URLS=https://cdn-alt.download.clearlinux.org/debuginfo/ https://cdn.download.clearlinux.org/debuginfo/"
 
 [Install]
 WantedBy=multi-user.target
