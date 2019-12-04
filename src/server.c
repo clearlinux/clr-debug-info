@@ -133,6 +133,16 @@ int configure_urls(void)
 	return count;
 }
 
+void free_urls(void)
+{
+	if (urls != urls_default) {
+		for (int i=0; i<urls_size; i++) {
+			free(urls[i]);
+		}
+		free(urls);
+	}
+}
+
 #ifdef HAVE_ATOMIC_SUPPORT
 
 static atomic_int current_connection_count = 0;
@@ -596,6 +606,8 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
         if (hash) {
                 nc_hashmap_free(hash);
         }
+
+	free_urls();
 }
 
 /*
