@@ -108,21 +108,31 @@ int configure_urls(void)
         const char *token = env_var;
         int count = 0;
         char **urls_new = NULL;
-        if (env_var) while (1) {
-                int token_len = strcspn(token, " \t\n");
-                if (token_len) {
-                        count++;
-                        urls_new = realloc(urls_new, count * sizeof(char*));
-                        if (!urls_new) { perror("realloc()"); exit(EXIT_FAILURE); }
+        if (env_var) {
+                while (1) {
+                        int token_len = strcspn(token, " \t\n");
+                        if (token_len) {
+                                count++;
+                                urls_new = realloc(urls_new, count * sizeof(char *));
+                                if (!urls_new) {
+                                        perror("realloc()");
+                                        exit(EXIT_FAILURE);
+                                }
 
-                        char *url = calloc(token_len+1, sizeof(char));
-                        if (!url) { perror("calloc()"); exit(EXIT_FAILURE); }
+                                char *url = calloc(token_len + 1, sizeof(char));
+                                if (!url) {
+                                        perror("calloc()");
+                                        exit(EXIT_FAILURE);
+                                }
 
-                        urls_new[count-1] = strncpy(url, token, token_len);
-                        token += token_len;
+                                urls_new[count - 1] = strncpy(url, token, token_len);
+                                token += token_len;
+                        }
+                        if (*token == '\0') {
+                                break;
+                        }
+                        token++;
                 }
-                if (*token == '\0') break;
-                token++;
         }
         if (count) {
                 // Abandon defaults
@@ -136,7 +146,7 @@ int configure_urls(void)
 void free_urls(void)
 {
         if (urls != urls_default) {
-                for (int i=0; i<urls_size; i++) {
+                for (int i = 0; i < urls_size; i++) {
                         free(urls[i]);
                 }
                 free(urls);
@@ -467,7 +477,7 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
         } else {
                 fprintf(stderr, "Using compiled default urls\n");
         }
-        for (int i=0; i<urls_size; i++) {
+        for (int i = 0; i < urls_size; i++) {
                 fprintf(stderr, "url: %s\n", urls[i]);
         }
 
