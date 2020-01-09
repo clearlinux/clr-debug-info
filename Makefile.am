@@ -45,3 +45,12 @@ clr_debug_daemon_LDADD = ${curl_LIBS} libnica.la ${LIBSYSTEMD_LIBS}
 systemdsystemunit_DATA = clr_debug_fuse.service clr_debug_daemon.service clr_debug_daemon.socket
 
 tmpfiles_DATA = debuginfo.conf
+
+# Functional Testing
+noinst_PROGRAMS = testing_fuse testing_daemon
+
+testing_fuse_SOURCES = tests/testing_fuse.c
+testing_fuse_CFLAGS = $(AM_CFLAGS)
+
+testing_daemon_SOURCES = tests/testing_daemon.c
+testing_daemon_CFLAGS = $(AM_CFLAGS)
