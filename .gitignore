@@ -2,6 +2,9 @@
 *.o
 clr_debug_fuse
 clr_debug_daemon
+test-driver
+testing_fuse
+testing_daemon
 .deps/
 .dirstamp
 Makefile
@@ -29,3 +32,8 @@ config.guess
 config.sub
 libtool
 ltmain.sh
+test-suite.log
+testing_fuse.log
+testing_fuse.trs
+testing_daemon.log
+testing_daemon.trs
