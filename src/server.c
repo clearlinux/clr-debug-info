@@ -28,11 +28,11 @@
 
 #include <errno.h>
 #include <grp.h>
+#include <libgen.h>
 #include <linux/capability.h>
 #include <malloc.h>
 #include <pthread.h>
 #include <pwd.h>
-#include <libgen.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -321,7 +321,8 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
                 }
 
                 /* test extraction first */
-                if (asprintf(&command, "tar -C /var/cache/debuginfo/%s --no-same-owner "
+                if (asprintf(&command,
+                             "tar -C /var/cache/debuginfo/%s --no-same-owner "
                              "--no-same-permissions -tf %s",
                              prefix,
                              filename) < 0) {
@@ -336,7 +337,8 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
                 }
 
                 free(command); /* reuse */
-                if (asprintf(&command, "tar -C /var/cache/debuginfo/%s --no-same-owner "
+                if (asprintf(&command,
+                             "tar -C /var/cache/debuginfo/%s --no-same-owner "
                              "--no-same-permissions -xf %s",
                              prefix,
                              filename) < 0) {
@@ -543,8 +545,8 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
                 strcpy(sun.sun_path, SOCKET_PATH);
 
                 ret = bind(sockfd,
-                        (struct sockaddr *)&sun,
-                        offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH) + 1);
+                           (struct sockaddr *)&sun,
+                           offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH) + 1);
                 if (ret < 0) {
                         fprintf(stderr, "Failed to bind:%s \n", strerror(errno));
                         exit(EXIT_FAILURE);
@@ -590,7 +592,6 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
                 } else if (ret == 0) {
                         break;
                 }
-
 
                 clientsock = accept(sockfd, NULL, NULL);
 
