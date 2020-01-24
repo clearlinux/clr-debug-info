@@ -44,6 +44,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "nica/files.h"
 #include "nica/hashmap.h"
@@ -59,6 +60,20 @@
 #endif
 
 #define TIMEOUT 600 /* 10 minutes */
+#define DOWNLOAD_PARTS 2
+
+typedef struct {
+        double size;
+        long too_old;
+        long file_mtim;
+        long ret;
+} curl_info_t;
+
+typedef struct {
+        char *filename;
+        CURL *handler;
+        FILE *file;
+} filepart_t;
 
 static pthread_mutex_t dupes_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -221,94 +236,257 @@ __nc_inline__ static inline void dec_connection_count(void)
 
 #endif /* !(HAVE_ATOMIC_SUPPORT) */
 
+static size_t curl_header_handler(char *buffer, size_t size, size_t nitems, void *userdata)
+{
+        return nitems * size;
+}
+
+/**
+ * Get http document header
+ */
+static int curl_get_file_info(const char *url, curl_info_t *info, time_t timestamp)
+{
+        CURL *curl_handler;
+        CURLcode ret = 0;
+
+        curl_handler = curl_easy_init();
+        if (curl_handler == NULL)
+                return -1;
+
+        curl_easy_setopt(curl_handler, CURLOPT_URL, url);
+        curl_easy_setopt(curl_handler, CURLOPT_NOBODY, 1L);
+        curl_easy_setopt(curl_handler, CURLOPT_HEADERFUNCTION, curl_header_handler);
+        curl_easy_setopt(curl_handler, CURLOPT_FOLLOWLOCATION, 1L);
+
+        /* request timestamp of files from server */
+        curl_easy_setopt(curl_handler, CURLOPT_FILETIME, 1L);
+        curl_easy_setopt(curl_handler, CURLOPT_TIMECONDITION, CURL_TIMECOND_IFMODSINCE);
+        curl_easy_setopt(curl_handler, CURLOPT_TIMEVALUE, timestamp);
+
+        do {
+                if (curl_easy_perform(curl_handler) != CURLE_OK) {
+                        ret = -1;
+                        break;
+                }
+                if (curl_easy_getinfo(curl_handler, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &info->size) != CURLE_OK) {
+                        ret = -1;
+                        break;
+                }
+                if (curl_easy_getinfo(curl_handler, CURLINFO_CONDITION_UNMET, &info->too_old) != CURLE_OK) {
+                        ret = -1;
+                        break;
+                }
+                if (curl_easy_getinfo(curl_handler, CURLINFO_FILETIME, &info->file_mtim) != CURLE_OK) {
+                        ret = -1;
+                        break;
+                }
+                if (curl_easy_getinfo(curl_handler, CURLINFO_RESPONSE_CODE, &info->ret) != CURLE_OK) {
+                        ret = -1;
+                        break;
+                }
+        } while(false);
+        curl_easy_cleanup(curl_handler);
+        return ret;
+}
+
+static int curl_join_file(FILE* newfile, filepart_t *fileparts)
+{
+        int i;
+        for (i = 0; i < DOWNLOAD_PARTS; i++) {
+                long size;
+                autofree(char) *buffer = NULL;
+                fseek(fileparts[i].file, 0, SEEK_END);
+                size = ftell(fileparts[i].file);
+                fseek(fileparts[i].file, 0, SEEK_SET);
+
+                buffer = malloc(size +1);
+                fread(buffer, 1, size, fileparts[i].file);
+                fwrite(buffer, 1, size, newfile);
+        }
+        return 0;
+}
+
+void close_n_unlink(filepart_t *filepart)
+{
+        curl_easy_cleanup(filepart->handler);
+        fclose(filepart->file);
+        unlink(filepart->filename);
+        free(filepart->filename);
+}
+
+static int curl_download_file(const char *url, FILE *newfile, double size)
+{
+        double partSize = 0;
+        double segLocation = 0;
+        int still_running;
+        const char *outputfile;
+        filepart_t fileparts[DOWNLOAD_PARTS];
+        CURLM *multi_handler;
+        CURLMsg *msg;
+        long counter = 0;
+        int msgs_left;
+        int i;
+
+        partSize = size / DOWNLOAD_PARTS;
+
+        outputfile = strrchr((const char*)url, '/') + 1;
+        curl_global_init(CURL_GLOBAL_ALL);
+
+        for (i = 0; i < DOWNLOAD_PARTS; i++) {
+                autofree(char) *range = NULL;
+
+                asprintf(&fileparts[i].filename, "/tmp/clr-debug-info-%s.part.%0d", outputfile, i);
+                fileparts[i].handler = curl_easy_init();
+                fileparts[i].file = fopen(fileparts[i].filename, "w+");
+                setvbuf(fileparts[i].file, NULL, _IOLBF, 0);
+                double nextPart = (i == DOWNLOAD_PARTS - 1)? size : segLocation + partSize - 1;
+
+                asprintf(&range, "%0.0f-%0.0f", segLocation, nextPart);
+
+                curl_easy_setopt(fileparts[i].handler, CURLOPT_URL, url);
+                curl_easy_setopt(fileparts[i].handler, CURLOPT_RANGE, range);
+                curl_easy_setopt(fileparts[i].handler, CURLOPT_FOLLOWLOCATION, 1L);
+                curl_easy_setopt(fileparts[i].handler, CURLOPT_NOPROGRESS, 1L);
+                curl_easy_setopt(fileparts[i].handler, CURLOPT_WRITEDATA, fileparts[i].file);
+                curl_easy_setopt(fileparts[i].handler, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+
+                /*
+                 * Some sane timeout values to prevent stalls
+                 *
+                 * Connect timeout is for first connection to the server.
+                 * The low speed timeout is for slow downloads. Since many
+                 * files are several mB large, we want to prevent them from
+                 * taking forever. (1kB/sec avg over 30secs).
+                 */
+                curl_easy_setopt(fileparts[i].handler, CURLOPT_CONNECTTIMEOUT, 30);
+                curl_easy_setopt(fileparts[i].handler, CURLOPT_LOW_SPEED_TIME, 30);
+                curl_easy_setopt(fileparts[i].handler, CURLOPT_LOW_SPEED_LIMIT, 1024);
+
+                segLocation = segLocation + partSize;
+        }
+
+        multi_handler = curl_multi_init();
+        if (multi_handler == NULL) {
+                return -1;
+        }
+
+        for (i = 0; i < DOWNLOAD_PARTS; i++) {
+                curl_multi_add_handle(multi_handler, fileparts[i].handler);
+        }
+
+        curl_multi_perform(multi_handler, &still_running);
+
+        do {
+                struct timeval timeout;
+                int rc;
+                fd_set fdread;
+                fd_set fdwrite;
+                fd_set fdexcep;
+                int max = -1;
+                long curl_timeo = -1;
+
+                FD_ZERO(&fdread);
+                FD_ZERO(&fdwrite);
+                FD_ZERO(&fdexcep);
+
+                timeout.tv_sec = 100 * 1000;
+                timeout.tv_usec = 0;
+
+                curl_multi_timeout(multi_handler, &curl_timeo);
+                if (curl_timeo >= 0) {
+                        timeout.tv_sec = curl_timeo / 1000;
+                        if (timeout.tv_sec > 1) {
+                                timeout.tv_sec = 1;
+                        } else {
+                                timeout.tv_usec = (curl_timeo % 1000) * 1000;
+                        }
+                }
+
+                curl_multi_fdset(multi_handler, &fdread, &fdwrite, &fdexcep, &max);
+
+                rc = select(max + 1, &fdread, &fdwrite, &fdexcep, &timeout);
+
+                switch (rc) {
+                case -1:
+                        fputs("Could not select the error\n", stderr);
+                        break;
+                case 0:
+                default:
+                        curl_multi_perform(multi_handler, &still_running);
+                        break;
+                }
+        } while(still_running);
+
+        while ((msg = curl_multi_info_read(multi_handler, &msgs_left))) {
+                if (msg->msg == CURLMSG_DONE) {
+                        int index, found = 0;
+                        for (index = 0; index < DOWNLOAD_PARTS; index++) {
+                                found = (msg->easy_handle == fileparts[index].handler);
+                                if (found) {
+                                        counter++;
+                                        break;
+                                }
+                        }
+                }
+        }
+
+        curl_multi_cleanup(multi_handler);
+
+        curl_join_file(newfile, &fileparts[0]);
+
+        for (i = 0; i < DOWNLOAD_PARTS; i++) {
+                close_n_unlink(&fileparts[i]);
+        }
+        return counter != DOWNLOAD_PARTS;
+}
+
 static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 {
-        CURLcode code;
+        curl_info_t info;
         long ret;
-        long changed;
         int fd;
         autofree(char) *filename = NULL;
-        CURL *curl = NULL;
         FILE *file;
 
         if (avoid_dupes(url)) {
                 return 300;
         }
 
-        curl = curl_easy_init();
-        if (curl == NULL) {
-                return 301;
-        }
-
-        // fprintf(stderr, "Fetching %s, prefix %s, path %s\n", url, prefix, path);
-        if (asprintf(&filename, "/tmp/clr-debug-info-XXXXXX") < 0) {
-                curl_easy_cleanup(curl);
+        if (curl_get_file_info(url, &info, timestamp)) {
                 return 418;
         }
-        fd = mkstemp(filename);
-        if (fd < 0) {
-                curl_easy_cleanup(curl);
-                return 418;
-        }
+        ret = info.ret;
 
-        file = fdopen(fd, "w");
-
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
-        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-
-        /*
-         * Some sane timeout values to prevent stalls
-         *
-         * Connect timeout is for first connection to the server.
-         * The low speed timeout is for slow downloads. Since many
-         * files are several mB large, we want to prevent them from
-         * taking forever. (1kB/sec avg over 30secs).
-         */
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30);
-        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30);
-        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1024);
-
-        /* request timestamp of files from server */
-        curl_easy_setopt(curl, CURLOPT_FILETIME, 1);
-
-        if (timestamp) {
-                curl_easy_setopt(curl, CURLOPT_TIMECONDITION, CURL_TIMECOND_IFMODSINCE);
-                curl_easy_setopt(curl, CURLOPT_TIMEVALUE, timestamp);
-        }
-
-        code = curl_easy_perform(curl);
-
-        /* can't trust the file if we get an error back */
-        if (code != 0) {
-                unlink(filename);
-        }
-
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &ret);
-        fflush(file);
-        //        printf("HTTP return code is %i\n", ret);
-
-        /* HTTP 304 is returned if (a) the cached debuginfo has the same
-         * timestamp or is newer than that on the server and (b) we haven't
-         * already added the URL to the hash table. So, the first crash for a
-         * boot may result in a 304 if the debuginfo had been downloaded in a
-         * previous boot.
-         */
-        if (ret != 200 && ret != 404 && ret != 304) {
+        if (info.ret != 200 && info.ret != 404 && info.ret != 304) {
                 urlcounter++;
         }
 
-        if (ret == 200) {
+        if (asprintf(&filename, "/tmp/clr-debug-info-XXXXXX") < 0) {
+                ret = 418;
+        }
+
+        fd = mkstemp(filename);
+        if (fd < 0) {
+                ret = 418;
+        }
+
+        file = fdopen(fd, "w");
+        if (curl_download_file(url, file, info.size)) {
+                ret = 418;
+        }
+
+        fflush(file);
+
+        if (info.ret == 200) {
                 autofree(char) *command = NULL;
                 struct stat statbuf;
 
                 /* get timestamp, if any */
-                curl_easy_getinfo(curl, CURLINFO_FILETIME, &changed);
-                if (changed >= 0) {
+                if (!info.too_old) {
                         struct timespec times[2];
-                        times[0].tv_sec = (time_t)changed;
+                        times[0].tv_sec = (time_t)info.file_mtim;
                         times[0].tv_nsec = 0;
-                        times[1].tv_sec = (time_t)changed;
+                        times[1].tv_sec = (time_t)info.file_mtim;
                         times[1].tv_nsec = 0;
                         futimens(fd, times);
                 }
@@ -332,7 +510,6 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 
                 if (system(command) != 0) {
                         ret = 418;
-                        fprintf(stderr, "Error: tar validation failed\n");
                         goto out;
                 }
 
@@ -355,7 +532,6 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 
 out:
         unlink(filename);
-        curl_easy_cleanup(curl);
         fclose(file);
         return ret;
 }
