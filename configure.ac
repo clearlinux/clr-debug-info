@@ -9,13 +9,13 @@ AC_PROG_CC
 AM_PROG_AR
 AC_LANG(C)
 AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_FILES([clr_debug_daemon.socket])
+AC_CONFIG_FILES([debuginfo.conf])
 PKG_CHECK_MODULES([curl], [libcurl])
 PKG_CHECK_MODULES([fuse], [fuse])
 PKG_CHECK_MODULES([SYSTEMD], [systemd])
 PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd])
 LT_INIT
-
-AC_DEFINE([SOCKET_PATH], ["/run/clr-debug-info"], [path to communication socket])
 
 dir=""
 AC_ARG_WITH([systemdsystemunitdir], AS_HELP_STRING([--with-systemdsystemunitdir=DIR],
@@ -38,6 +38,22 @@ else
         AC_MSG_WARN([C11 stdatomic support unavailable. Falling back to slow mutex])
 fi
 
+SOCKET_PATH=""
+AC_ARG_WITH([socket-path], AS_HELP_STRING([--with-socket-path=SOCKET_PATH],
+            [path to create unix socket @<:@default=/run/clr-debug-info@:>@]), [SOCKET_PATH=${withval}],
+            [SOCKET_PATH="/run/clr-debug-info"])
+test -z "${SOCKET_PATH}" && SOCKET_PATH=/run/clr-debug-info
+AC_DEFINE_UNQUOTED([SOCKET_PATH], ["${SOCKET_PATH}"], [path to create unix socket @<:@default=/run/clr-debug-info@:>@])
+AC_SUBST(SOCKET_PATH, [${SOCKET_PATH}])
+
+CACHE_DIR=""
+AC_ARG_WITH([cache-dir], AS_HELP_STRING([--with-cache-dir=CACHE_DIR],
+            [path to cache downloaded content @<:@default=/var/cache/debuginfo@:>@]), [CACHE_DIR="${withval}"],
+            [CACHE_DIR="/var/cache/debuginfo"])
+test -z "${CACHE_DIR}" && CACHE_DIR=/var/cache/debuginfo
+AC_DEFINE_UNQUOTED([CACHE_DIR], ["${CACHE_DIR}"], [path to cache downloaded content @<:@default=/var/cache/debuginfo@:>@])
+AC_SUBST(CACHE_DIR, [${CACHE_DIR}])
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 
@@ -57,6 +73,8 @@ AC_MSG_RESULT([
 
         systemd-unit-dir:       ${systemdsystemunitdir}
         tmpfiles.d:             ${tmpfilesdir}
+        socket_dir:             ${SOCKET_PATH}
+        cache_dir:              ${CACHE_DIR}
 
         C11 stdatomic support:  ${have_atomics}
 ])

@@ -636,8 +636,8 @@ int main(__nc_unused__ int argc, __nc_unused__ char *argv[])
 {
         char *fake_argv[20];
         char *dir = "/usr/src/debug";
-        char *shadowdir = "/var/cache/debuginfo/src";
-        const char *required_paths[] = { "/var/cache/debuginfo/lib", "/var/cache/debuginfo/src" };
+        char *shadowdir = CACHE_DIR "/src";
+        const char *required_paths[] = { CACHE_DIR "/lib", CACHE_DIR "/src" };
 
         umask(0);
 
@@ -663,7 +663,7 @@ int main(__nc_unused__ int argc, __nc_unused__ char *argv[])
 
         if (fork() == 0) {
                 dir = "/usr/lib/debug";
-                shadowdir = "/var/cache/debuginfo/lib";
+                shadowdir = CACHE_DIR "/lib";
                 prefix = "lib";
         }
 
