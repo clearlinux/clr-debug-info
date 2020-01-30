@@ -147,6 +147,7 @@ int main(void)
                 char *args[] = {"./clr_debug_fuse", NULL};
                 execvp("./clr_debug_fuse", args);
         } else if (p > 0) {
+                sleep(1);
                 res = testing_fuse();
                 kill(p, SIGKILL);
         } else {
