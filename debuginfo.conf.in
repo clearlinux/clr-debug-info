@@ -10,5 +10,5 @@
 # Clear tmp directories separately, to make them easier to override
 # Unfortunatly tmpfiles doesn't change the ownership for things if they
 # are not listed.
-d /var/cache/debuginfo/lib 755 dbginfo dbginfo 10d
-d /var/cache/debuginfo/src 755 dbginfo dbginfo 1d
+d @CACHE_DIR@/lib 755 dbginfo dbginfo 10d
+d @CACHE_DIR@/src 755 dbginfo dbginfo 1d

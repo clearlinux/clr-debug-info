@@ -2,7 +2,7 @@
 Description=Clear Linux OS debuginfo daemon
 
 [Socket]
-ListenStream=/run/clr-debug-info
+ListenStream=@SOCKET_PATH@
 SocketMode=0600
 
 [Install]

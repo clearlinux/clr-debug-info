@@ -322,8 +322,9 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 
                 /* test extraction first */
                 if (asprintf(&command,
-                             "tar -C /var/cache/debuginfo/%s --no-same-owner "
+                             "tar -C %s/%s --no-same-owner "
                              "--no-same-permissions -tf %s",
+                             CACHE_DIR,
                              prefix,
                              filename) < 0) {
                         ret = 418;
@@ -338,8 +339,9 @@ static int curl_get_file(const char *url, const char *prefix, time_t timestamp)
 
                 free(command); /* reuse */
                 if (asprintf(&command,
-                             "tar -C /var/cache/debuginfo/%s --no-same-owner "
+                             "tar -C %s/%s --no-same-owner "
                              "--no-same-permissions -xf %s",
+                             CACHE_DIR,
                              prefix,
                              filename) < 0) {
                         ret = 418;
@@ -472,7 +474,7 @@ int main(__nc_unused__ int argc, __nc_unused__ char **argv)
         uid_t dbg_user = 0;
         gid_t dbg_group = 0;
         struct passwd *passwdentry;
-        const char *required_paths[] = { "/var/cache/debuginfo/lib", "/var/cache/debuginfo/src" };
+        const char *required_paths[] = { CACHE_DIR "/lib", CACHE_DIR "/src" };
 
         if (configure_urls()) {
                 fprintf(stderr, "Using urls from environment\n");

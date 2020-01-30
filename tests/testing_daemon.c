@@ -67,7 +67,7 @@ int testing_daemon(void)
         }
 
         close(sockfd);
-        return strcmp(buffer, "ok") && access("/var/cache/debuginfo/lib/lib", F_OK) != -1;
+        return strcmp(buffer, "ok") && access(CACHE_DIR "/lib/lib", F_OK) != -1;
 }
 
 int main(void)
