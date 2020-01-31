@@ -12,7 +12,7 @@ AM_CFLAGS = \
         -Wno-conversion -Wunused-variable -Wunreachable-code \
         -Wall -W -D_FORTIFY_SOURCE=2 -std=c11
 
-AM_CPPFLAGS = $(AM_CFLAGS) ${curl_CFLAGS} ${fuse_CFLAGS}
+AM_CPPFLAGS = $(AM_CFLAGS) ${curl_CFLAGS} ${fuse3_CFLAGS}
 
 bin_PROGRAMS = clr_debug_fuse clr_debug_daemon
 
@@ -39,7 +39,7 @@ clr_debug_daemon_CFLAGS = \
 	$(LIBSYSTEMD_CFLAGS)
 
 
-clr_debug_fuse_LDADD = ${fuse_LIBS} libnica.la
+clr_debug_fuse_LDADD = ${fuse3_LIBS} libnica.la
 clr_debug_daemon_LDADD = ${curl_LIBS} libnica.la ${LIBSYSTEMD_LIBS}
 
 systemdsystemunit_DATA = clr_debug_fuse.service clr_debug_daemon.service clr_debug_daemon.socket

@@ -9,8 +9,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - name: serch
+      run: sudo apt-cache search libfuse3
     - name: install dependencies
-      run: sudo apt-get install libsystemd-dev libcurl4-openssl-dev libfuse-dev
+      run: sudo apt-get install libsystemd-dev libcurl4-openssl-dev libfuse3-dev
     - name: autogen
       run: sh autogen.sh
     - name: make

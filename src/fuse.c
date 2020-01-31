@@ -22,7 +22,7 @@ Original copyright notice follows:
 */
 
 #define _GNU_SOURCE
-#define FUSE_USE_VERSION 26
+#define FUSE_USE_VERSION 30
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -63,7 +63,8 @@ __attribute__((always_inline)) static inline char *xmp_make_dotpath(const char *
         return newp;
 }
 
-static int xmp_getattr(const char *path, struct stat *stbuf)
+static int xmp_getattr(const char *path, struct stat *stbuf,
+                       __nc_unused__ struct fuse_file_info *fi)
 {
         int res;
         autofree(char) *newpath = NULL;
@@ -136,7 +137,7 @@ static int xmp_readlink(const char *path, char *buf, size_t size)
 }
 
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
-                       struct fuse_file_info *fi)
+                       struct fuse_file_info *fi, __nc_unused__ enum fuse_readdir_flags flags)
 {
         DIR *dp;
         struct dirent *de;
@@ -159,7 +160,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_
                 memset(&st, 0, sizeof(st));
                 st.st_ino = de->d_ino;
                 st.st_mode = de->d_type << 12;
-                if (filler(buf, de->d_name, &st, 0)) {
+                if (filler(buf, de->d_name, &st, 0, 0)) {
                         break;
                 }
         }
@@ -268,7 +269,8 @@ static int xmp_symlink(const char *from, const char *to)
         return 0;
 }
 
-static int xmp_rename(const char *from, const char *to)
+static int xmp_rename(const char *from, const char *to,
+                      __nc_unused__ unsigned int flags)
 {
         int res;
         autofree(char) *newfrom = NULL;
@@ -311,7 +313,8 @@ static int xmp_link(const char *from, const char *to)
         return 0;
 }
 
-static int xmp_chmod(const char *path, mode_t mode)
+static int xmp_chmod(const char *path, mode_t mode,
+                     __nc_unused__ struct fuse_file_info *fi)
 {
         int res;
         autofree(char) *newpath = NULL;
@@ -328,7 +331,8 @@ static int xmp_chmod(const char *path, mode_t mode)
         return 0;
 }
 
-static int xmp_chown(const char *path, uid_t uid, gid_t gid)
+static int xmp_chown(const char *path, uid_t uid, gid_t gid,
+                     __nc_unused__ struct fuse_file_info *fi)
 {
         int res;
         autofree(char) *newpath = NULL;
@@ -345,7 +349,8 @@ static int xmp_chown(const char *path, uid_t uid, gid_t gid)
         return 0;
 }
 
-static int xmp_truncate(const char *path, off_t size)
+static int xmp_truncate(const char *path, off_t size,
+                        __nc_unused__ struct fuse_file_info *fi)
 {
         int res;
         autofree(char) *newpath = NULL;
@@ -586,7 +591,7 @@ static int xmp_removexattr(const char *path, const char *name)
 
 int save_dir;
 
-static void *xmp_init(__nc_unused__ struct fuse_conn_info *conn)
+static void *xmp_init(__nc_unused__ struct fuse_conn_info *conn, __nc_unused__ struct fuse_config *conf)
 {
         __nc_unused__ int r = fchdir(save_dir);
         close(save_dir);

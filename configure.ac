@@ -12,7 +12,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([clr_debug_daemon.socket])
 AC_CONFIG_FILES([debuginfo.conf])
 PKG_CHECK_MODULES([curl], [libcurl])
-PKG_CHECK_MODULES([fuse], [fuse])
+PKG_CHECK_MODULES([fuse3], [fuse3])
 PKG_CHECK_MODULES([SYSTEMD], [systemd])
 PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd])
 LT_INIT
